@@ -1,0 +1,4 @@
+model,val_pr_auc,test_pr_auc,test_roc_auc,test_recall@50%prec,test_recall@90%prec
+IsolationForest,0.2985,0.2118,0.9365,0.0,0.0
+XGBoost,0.9031,0.859,0.9969,0.8942,0.6811
+XGBoost + IsoScore,0.9044,0.8589,0.9971,0.8998,0.6862
