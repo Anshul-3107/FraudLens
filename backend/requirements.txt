@@ -1,0 +1,5 @@
+-r ../ml/requirements.txt
+django
+djangorestframework
+python-dotenv
+psycopg[binary]

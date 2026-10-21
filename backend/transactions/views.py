@@ -1,0 +1,217 @@
+from django.contrib.auth import get_user_model
+from django.db.models import Count, Exists, OuterRef, Sum
+from django.db.models.functions import TruncMonth
+from django.utils.dateparse import parse_date
+from rest_framework import permissions, status, viewsets
+from rest_framework.authtoken.models import Token
+from rest_framework.decorators import action
+from rest_framework.exceptions import ParseError
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from .models import Alert, Card, Investigation, Transaction
+from .serializers import (
+    AlertSerializer, CardSerializer, InvestigationCreateSerializer,
+    InvestigationSerializer, RegisterSerializer, TransactionSerializer,
+)
+
+User = get_user_model()
+
+
+# ---------------------------------------------------------------- helpers
+def visible_cards(user):
+    """Staff see every card; everyone else only their own."""
+    cards = Card.objects.all()
+    return cards if user.is_staff else cards.filter(owner=user)
+
+
+def param_int(params, key):
+    value = params.get(key)
+    if value in (None, ""):
+        return None
+    try:
+        return int(value)
+    except ValueError:
+        raise ParseError(f"'{key}' must be a whole number.")
+
+
+def param_float(params, key):
+    value = params.get(key)
+    if value in (None, ""):
+        return None
+    try:
+        return float(value)
+    except ValueError:
+        raise ParseError(f"'{key}' must be a number.")
+
+
+def param_date(params, key):
+    value = params.get(key)
+    if value in (None, ""):
+        return None
+    try:
+        parsed = parse_date(value)
+    except ValueError:
+        parsed = None
+    if parsed is None:
+        raise ParseError(f"'{key}' must be a date like 2020-08-31.")
+    return parsed
+
+
+# ---------------------------------------------------------------- auth
+class RegisterView(APIView):
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = []
+
+    def post(self, request):
+        serializer = RegisterSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        token, _ = Token.objects.get_or_create(user=user)
+        return Response({"token": token.key, "username": user.username}, status=status.HTTP_201_CREATED)
+
+
+class MeView(APIView):
+    def get(self, request):
+        user = request.user
+        return Response({
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "is_staff": user.is_staff,
+            "card_count": visible_cards(user).count(),
+        })
+
+
+# ---------------------------------------------------------------- data
+class CardViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = CardSerializer
+
+    def get_queryset(self):
+        return visible_cards(self.request.user).order_by("id")
+
+
+class TransactionViewSet(viewsets.ReadOnlyModelViewSet):
+    """Filters: card, category, search (merchant), date_from, date_to,
+    min_amount, flagged=true."""
+    serializer_class = TransactionSerializer
+
+    def get_queryset(self):
+        p = self.request.query_params
+        qs = (
+            Transaction.objects.filter(card__in=visible_cards(self.request.user))
+            .select_related("card")
+            .annotate(has_alert=Exists(Alert.objects.filter(transaction=OuterRef("pk"))))
+        )
+        if (card := param_int(p, "card")) is not None:
+            qs = qs.filter(card_id=card)
+        if p.get("category"):
+            qs = qs.filter(category=p["category"])
+        if p.get("search"):
+            qs = qs.filter(merchant__icontains=p["search"])
+        if (d := param_date(p, "date_from")) is not None:
+            qs = qs.filter(occurred_at__date__gte=d)
+        if (d := param_date(p, "date_to")) is not None:
+            qs = qs.filter(occurred_at__date__lte=d)
+        if (amount := param_float(p, "min_amount")) is not None:
+            qs = qs.filter(amount__gte=amount)
+        if p.get("flagged", "").lower() == "true":
+            qs = qs.filter(has_alert=True)
+        return qs.order_by("-occurred_at")
+
+
+ALERT_ORDERING = {
+    "score": "score", "-score": "-score",
+    "created_at": "created_at", "-created_at": "-created_at",
+    "occurred_at": "transaction__occurred_at", "-occurred_at": "-transaction__occurred_at",
+}
+
+
+class AlertViewSet(viewsets.ReadOnlyModelViewSet):
+    """Filters: status, card, min_score. Ordering: score, created_at,
+    occurred_at (prefix with - for descending). Default is newest first."""
+    serializer_class = AlertSerializer
+
+    def get_queryset(self):
+        p = self.request.query_params
+        qs = (
+            Alert.objects.filter(transaction__card__in=visible_cards(self.request.user))
+            .select_related("transaction__card")
+            .prefetch_related("investigations")
+        )
+        if p.get("status"):
+            qs = qs.filter(status=p["status"])
+        if (card := param_int(p, "card")) is not None:
+            qs = qs.filter(transaction__card_id=card)
+        if (score := param_float(p, "min_score")) is not None:
+            qs = qs.filter(score__gte=score)
+        ordering = ALERT_ORDERING.get(p.get("ordering", ""), "-transaction__occurred_at")
+        return qs.order_by(ordering, "-id")
+
+    @action(detail=True, methods=["post"])
+    def investigate(self, request, pk=None):
+        """Record a verdict. Body: {"verdict": "confirmed_fraud" | "false_positive" |
+        "needs_info", "notes": "..."}"""
+        alert = self.get_object()   # 404 if the alert is not on one of the user's cards
+        serializer = InvestigationCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        investigation = Investigation.objects.create(
+            alert=alert, analyst=request.user, **serializer.validated_data
+        )
+        needs_info = investigation.verdict == Investigation.Verdict.NEEDS_INFO
+        alert.status = Alert.Status.IN_REVIEW if needs_info else Alert.Status.RESOLVED
+        alert.save(update_fields=["status"])
+        return Response(InvestigationSerializer(investigation).data, status=status.HTTP_201_CREATED)
+
+
+class InvestigationViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = InvestigationSerializer
+
+    def get_queryset(self):
+        return (
+            Investigation.objects
+            .filter(alert__transaction__card__in=visible_cards(self.request.user))
+            .select_related("alert__transaction", "analyst")
+            .order_by("-created_at")
+        )
+
+
+# ---------------------------------------------------------------- dashboard
+class SummaryView(APIView):
+    """Numbers for the dashboard. Optional filters: card, date_from, date_to."""
+
+    def get(self, request):
+        p = request.query_params
+        txns = Transaction.objects.filter(card__in=visible_cards(request.user))
+        if (card := param_int(p, "card")) is not None:
+            txns = txns.filter(card_id=card)
+        if (d := param_date(p, "date_from")) is not None:
+            txns = txns.filter(occurred_at__date__gte=d)
+        if (d := param_date(p, "date_to")) is not None:
+            txns = txns.filter(occurred_at__date__lte=d)
+
+        totals = txns.aggregate(total=Sum("amount"), count=Count("id"))
+        by_category = (
+            txns.values("category").annotate(total=Sum("amount"), count=Count("id")).order_by("-total")
+        )
+        monthly = (
+            txns.annotate(month=TruncMonth("occurred_at"))
+            .values("month").annotate(total=Sum("amount"), count=Count("id")).order_by("month")
+        )
+        alert_status = (
+            Alert.objects.filter(transaction__in=txns).values("status").annotate(count=Count("id"))
+        )
+
+        return Response({
+            "total_spend": float(totals["total"] or 0),
+            "transaction_count": totals["count"],
+            "alerts_by_status": {row["status"]: row["count"] for row in alert_status},
+            "by_category": [
+                {"category": r["category"], "total": float(r["total"]), "count": r["count"]}
+                for r in by_category
+            ],
+            "monthly": [
+                {"month": r["month"].strftime("%Y-%m"), "total": float(r["total"]), "count": r["count"]}
+                for r in monthly
+            ],
+        })
