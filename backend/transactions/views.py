@@ -2,17 +2,19 @@ from django.contrib.auth import get_user_model
 from django.db.models import Count, Exists, OuterRef, Sum
 from django.db.models.functions import TruncMonth
 from django.utils.dateparse import parse_date
-from rest_framework import permissions, status, viewsets
+from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import action
-from rest_framework.exceptions import ParseError
+from rest_framework.exceptions import ParseError, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from .ingest import ingest_transaction
 from .models import Alert, Card, Investigation, Transaction
 from .serializers import (
     AlertSerializer, CardSerializer, InvestigationCreateSerializer,
-    InvestigationSerializer, RegisterSerializer, TransactionSerializer,
+    InvestigationSerializer, RegisterSerializer, TransactionCreateSerializer,
+    TransactionSerializer,
 )
 
 User = get_user_model()
@@ -91,9 +93,13 @@ class CardViewSet(viewsets.ReadOnlyModelViewSet):
         return visible_cards(self.request.user).order_by("id")
 
 
-class TransactionViewSet(viewsets.ReadOnlyModelViewSet):
-    """Filters: card, category, search (merchant), date_from, date_to,
-    min_amount, flagged=true."""
+class TransactionViewSet(
+    mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.CreateModelMixin,
+    viewsets.GenericViewSet,
+):
+    """GET filters: card, category, search (merchant), date_from, date_to,
+    min_amount, flagged=true.
+    POST: score and store a new transaction (see create)."""
     serializer_class = TransactionSerializer
 
     def get_queryset(self):
@@ -118,6 +124,43 @@ class TransactionViewSet(viewsets.ReadOnlyModelViewSet):
         if p.get("flagged", "").lower() == "true":
             qs = qs.filter(has_alert=True)
         return qs.order_by("-occurred_at")
+
+    def create(self, request, *args, **kwargs):
+        """Body: card (id), occurred_at (ISO time with zone, e.g. 2021-01-05T23:30:00Z),
+        merchant, category, amount; optional merch_lat, merch_long, trans_ref, source."""
+        serializer = TransactionCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        card = visible_cards(request.user).filter(id=data["card"]).first()
+        if card is None:
+            raise ValidationError({"card": "No card with that id on your account."})
+
+        txn, alert, result = ingest_transaction(
+            card=card,
+            occurred_at=data["occurred_at"],
+            merchant=data["merchant"],
+            category=data["category"],
+            amount=data["amount"],
+            merch_lat=data.get("merch_lat"),
+            merch_long=data.get("merch_long"),
+            source=data["source"],
+            trans_ref=data.get("trans_ref"),
+        )
+        txn.has_alert = alert is not None
+        return Response(
+            {
+                "transaction": TransactionSerializer(txn).data,
+                "scoring": {
+                    "score": round(result["score"], 6),
+                    "flagged": result["flagged"],
+                    "threshold": result["threshold"],
+                    "reasons": result["reasons"],
+                },
+                "alert_id": alert.id if alert else None,
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
 
 ALERT_ORDERING = {

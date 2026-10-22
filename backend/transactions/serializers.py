@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -49,6 +51,31 @@ class TransactionSerializer(serializers.ModelSerializer):
             "id", "trans_ref", "card", "card_label", "occurred_at",
             "merchant", "category", "amount", "source", "has_alert",
         ]
+
+
+class TransactionCreateSerializer(serializers.Serializer):
+    """Input for POST /api/transactions/. Whether the card belongs to the user is
+    checked in the view."""
+    card = serializers.IntegerField()
+    occurred_at = serializers.DateTimeField()
+    merchant = serializers.CharField(max_length=255)
+    category = serializers.ChoiceField(choices=Transaction.Category.choices)
+    amount = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal("0.01"))
+    merch_lat = serializers.FloatField(required=False, allow_null=True, min_value=-90, max_value=90)
+    merch_long = serializers.FloatField(required=False, allow_null=True, min_value=-180, max_value=180)
+    trans_ref = serializers.CharField(max_length=64, required=False)
+    source = serializers.ChoiceField(
+        choices=[
+            (Transaction.Source.UPLOAD.value, "User upload"),
+            (Transaction.Source.AA_SANDBOX.value, "Account Aggregator sandbox"),
+        ],
+        default=Transaction.Source.UPLOAD.value,
+    )
+
+    def validate_trans_ref(self, value):
+        if Transaction.objects.filter(trans_ref=value).exists():
+            raise serializers.ValidationError("A transaction with this reference already exists.")
+        return value
 
 
 class AlertTransactionSerializer(serializers.ModelSerializer):

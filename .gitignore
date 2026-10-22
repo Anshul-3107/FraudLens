@@ -4,5 +4,6 @@ __pycache__/
 ml/data/raw/*.csv
 ml/data/processed/*.parquet
 ml/artifacts/*.joblib
+backend/db.sqlite3
 .ipynb_checkpoints/
 .env
