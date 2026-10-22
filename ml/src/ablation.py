@@ -7,16 +7,17 @@ from train import SEED, VAL_START, evaluate, train_xgb
 from tune_threshold import REVIEW_COST, cost_threshold, outcome
 
 DEMOGRAPHICS = ["age", "gender_male", "log_city_pop"]
+ALL_FEATURES = FEATURES + DEMOGRAPHICS + ["card_prior_count"]
 
 VARIANTS = {
-    "all features (current)": [],
+    "all features": [],
     "no demographics": DEMOGRAPHICS,
     "no demographics, no card_prior_count": DEMOGRAPHICS + ["card_prior_count"],
 }
 
 
 def run_variant(name, drop, fit, val, test):
-    feats = [f for f in FEATURES if f not in drop]
+    feats = [f for f in ALL_FEATURES if f not in drop]
     if_feats = [f for f in feats if f != "category_code"]
 
     print(f"\n[{name}] Isolation Forest on {len(if_feats)} features...")
