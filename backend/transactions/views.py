@@ -1,4 +1,7 @@
+import math
+
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError, transaction as db_transaction
 from django.db.models import Count, Exists, OuterRef, Sum
 from django.db.models.functions import TruncMonth
 from django.utils.dateparse import parse_date
@@ -42,9 +45,12 @@ def param_float(params, key):
     if value in (None, ""):
         return None
     try:
-        return float(value)
+        val = float(value)
     except ValueError:
         raise ParseError(f"'{key}' must be a number.")
+    if not math.isfinite(val):
+        raise ParseError(f"'{key}' must be a finite number.")
+    return val
 
 
 def param_date(params, key):
@@ -136,17 +142,23 @@ class TransactionViewSet(
         if card is None:
             raise ValidationError({"card": "No card with that id on your account."})
 
-        txn, alert, result = ingest_transaction(
-            card=card,
-            occurred_at=data["occurred_at"],
-            merchant=data["merchant"],
-            category=data["category"],
-            amount=data["amount"],
-            merch_lat=data.get("merch_lat"),
-            merch_long=data.get("merch_long"),
-            source=data["source"],
-            trans_ref=data.get("trans_ref"),
-        )
+        supplied_ref = data.get("trans_ref")
+        try:
+            txn, alert, result = ingest_transaction(
+                card=card,
+                occurred_at=data["occurred_at"],
+                merchant=data["merchant"],
+                category=data["category"],
+                amount=data["amount"],
+                merch_lat=data.get("merch_lat"),
+                merch_long=data.get("merch_long"),
+                source=data["source"],
+                trans_ref=supplied_ref,
+            )
+        except IntegrityError:
+            if supplied_ref and Transaction.objects.filter(trans_ref=supplied_ref).exists():
+                raise ValidationError({"trans_ref": "A transaction with this reference already exists."})
+            raise
         txn.has_alert = alert is not None
         return Response(
             {
@@ -198,12 +210,13 @@ class AlertViewSet(viewsets.ReadOnlyModelViewSet):
         alert = self.get_object()   # 404 if the alert is not on one of the user's cards
         serializer = InvestigationCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        investigation = Investigation.objects.create(
-            alert=alert, analyst=request.user, **serializer.validated_data
-        )
-        needs_info = investigation.verdict == Investigation.Verdict.NEEDS_INFO
-        alert.status = Alert.Status.IN_REVIEW if needs_info else Alert.Status.RESOLVED
-        alert.save(update_fields=["status"])
+        with db_transaction.atomic():
+            investigation = Investigation.objects.create(
+                alert=alert, analyst=request.user, **serializer.validated_data
+            )
+            needs_info = investigation.verdict == Investigation.Verdict.NEEDS_INFO
+            alert.status = Alert.Status.IN_REVIEW if needs_info else Alert.Status.RESOLVED
+            alert.save(update_fields=["status"])
         return Response(InvestigationSerializer(investigation).data, status=status.HTTP_201_CREATED)
 
 

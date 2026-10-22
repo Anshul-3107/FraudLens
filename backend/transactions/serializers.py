@@ -73,6 +73,8 @@ class TransactionCreateSerializer(serializers.Serializer):
     )
 
     def validate_trans_ref(self, value):
+        if not value:
+            return value
         if Transaction.objects.filter(trans_ref=value).exists():
             raise serializers.ValidationError("A transaction with this reference already exists.")
         return value

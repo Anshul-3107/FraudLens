@@ -29,7 +29,7 @@ def haversine_km(lat1, lon1, lat2, lon2):
     lat1, lon1, lat2, lon2 = (np.radians(x) for x in (lat1, lon1, lat2, lon2))
     a = (np.sin((lat2 - lat1) / 2) ** 2
          + np.cos(lat1) * np.cos(lat2) * np.sin((lon2 - lon1) / 2) ** 2)
-    return 6371.0 * 2 * np.arcsin(np.sqrt(a))
+    return 6371.0 * 2 * np.arcsin(np.sqrt(np.clip(a, 0.0, 1.0)))
 
 
 def _count_in_window(df, window_seconds):
@@ -40,7 +40,8 @@ def _count_in_window(df, window_seconds):
     for _, idx in df.groupby("cc_num").indices.items():
         t = t_all[idx]
         start = np.searchsorted(t, t - window_seconds, side="left")
-        out[idx] = np.arange(len(t)) - start
+        end = np.searchsorted(t, t, side="left")
+        out[idx] = end - start
     return out
 
 
@@ -56,35 +57,66 @@ def build_features(raw: pd.DataFrame) -> pd.DataFrame:
     df["category_code"] = df["category"].map({c: i for i, c in enumerate(CATEGORIES)})
 
     # ---- cardholder / location features ----
-    df["age"] = (ts - pd.to_datetime(df["dob"])).dt.days / 365.25
+    ts_naive = ts.dt.tz_localize(None) if getattr(ts.dt, "tz", None) is not None else ts
+    df["age"] = (ts_naive - pd.to_datetime(df["dob"])).dt.days / 365.25
     df["gender_male"] = (df["gender"] == "M").astype(int)
     df["log_city_pop"] = np.log1p(df["city_pop"])
-    df["dist_home_merchant_km"] = haversine_km(
+    dist = haversine_km(
         df["lat"], df["long"], df["merch_lat"], df["merch_long"]
     )
+    df["dist_home_merchant_km"] = dist.fillna(76.0)
 
-    # ---- per-card behaviour, using ONLY earlier transactions ----
-    g = df.groupby("cc_num")
-    amt = df["amt"]
-    n = g.cumcount()                                   # number of prior transactions
-    n_safe = n.replace(0, np.nan)
+    # ---- per-card behaviour, using ONLY earlier transactions (strictly causal) ----
+    amt_all = df["amt"].to_numpy(dtype=float)
+    t_all = df["unix_time"].to_numpy(dtype=np.int64)
+    merch_all = df["merchant"].to_numpy()
+    cat_all = df["category"].to_numpy()
 
-    s1 = g["amt"].cumsum() - amt                       # sum of prior amounts
-    s2 = (amt ** 2).groupby(df["cc_num"]).cumsum() - amt ** 2
-    mean = s1 / n_safe
-    var = ((s2 - s1 ** 2 / n_safe) / (n - 1).replace(0, np.nan)).clip(lower=0)
-    std = np.sqrt(var).clip(lower=1.0)
+    n_arr = np.zeros(len(df), dtype=np.int32)
+    zscore_arr = np.zeros(len(df), dtype=float)
+    ratio_arr = np.ones(len(df), dtype=float)
+    secs_arr = np.full(len(df), 30 * 86400.0, dtype=float)
+    is_new_m = np.zeros(len(df), dtype=np.int32)
+    is_new_c = np.zeros(len(df), dtype=np.int32)
 
-    enough_history = n >= 5                            # otherwise: neutral values
-    df["card_prior_count"] = n
-    df["amt_zscore"] = np.where(enough_history, (amt - mean) / std, 0.0)
-    df["amt_ratio_to_mean"] = np.where(enough_history, amt / mean.clip(lower=1.0), 1.0)
+    for _, idx in df.groupby("cc_num").indices.items():
+        t = t_all[idx]
+        a = amt_all[idx]
+        m = merch_all[idx]
+        c = cat_all[idx]
 
-    df["secs_since_last"] = g["unix_time"].diff().fillna(30 * 86400)
+        end = np.searchsorted(t, t, side="left")
+        n_arr[idx] = end
+
+        last_idx = end - 1
+        secs_arr[idx] = np.where(last_idx >= 0, t - t[np.maximum(last_idx, 0)], 30 * 86400.0)
+
+        cum_a = np.concatenate([[0.0], np.cumsum(a)])
+        cum_a2 = np.concatenate([[0.0], np.cumsum(a ** 2)])
+        s1 = cum_a[end]
+        s2 = cum_a2[end]
+
+        with np.errstate(divide="ignore", invalid="ignore"):
+            mean = np.where(end >= 1, s1 / end, 0.0)
+            var = np.where(end >= 2, (s2 - (s1 ** 2) / end) / (end - 1), 0.0)
+            var = np.maximum(var, 0.0)
+            std = np.maximum(np.sqrt(var), 1.0)
+            enough = end >= 5
+            zscore_arr[idx] = np.where(enough, (a - mean) / std, 0.0)
+            ratio_arr[idx] = np.where(enough, a / np.maximum(mean, 1.0), 1.0)
+
+        for i_pos in range(len(t)):
+            prior_end = end[i_pos]
+            is_new_m[idx[i_pos]] = int(m[i_pos] not in m[:prior_end])
+            is_new_c[idx[i_pos]] = int(c[i_pos] not in c[:prior_end])
+
+    df["card_prior_count"] = n_arr
+    df["amt_zscore"] = zscore_arr
+    df["amt_ratio_to_mean"] = ratio_arr
+    df["secs_since_last"] = secs_arr
     df["txn_count_1h"] = _count_in_window(df, 3600)
     df["txn_count_24h"] = _count_in_window(df, 86400)
-
-    df["is_new_merchant"] = (df.groupby(["cc_num", "merchant"]).cumcount() == 0).astype(int)
-    df["is_new_category"] = (df.groupby(["cc_num", "category"]).cumcount() == 0).astype(int)
+    df["is_new_merchant"] = is_new_m
+    df["is_new_category"] = is_new_c
 
     return df

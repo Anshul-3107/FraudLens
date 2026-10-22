@@ -41,9 +41,23 @@ def get_bundle():
     features = _load_module("features", "features.py")    # must load first: explain.py imports it
     explain = _load_module("explain", "explain.py")
     artifacts = Path(settings.ML_ARTIFACTS_DIR)
-    iso = joblib.load(artifacts / "isolation_forest.joblib")
-    model = joblib.load(artifacts / "xgb_with_iso.joblib")
-    threshold = json.loads((artifacts / "threshold.json").read_text())["threshold"]
+
+    iso_path = artifacts / "isolation_forest.joblib"
+    model_path = artifacts / "xgb_with_iso.joblib"
+    threshold_path = artifacts / "threshold.json"
+
+    for path in (iso_path, model_path, threshold_path):
+        if not path.is_file():
+            raise FileNotFoundError(f"Missing required ML artifact: {path}")
+
+    iso = joblib.load(iso_path)
+    model = joblib.load(model_path)
+    try:
+        threshold_data = json.loads(threshold_path.read_text(encoding="utf-8"))
+        threshold = float(threshold_data["threshold"])
+    except (json.JSONDecodeError, KeyError, TypeError, ValueError) as e:
+        raise ValueError(f"Invalid threshold artifact {threshold_path}: {e}") from e
+
     return SimpleNamespace(
         features=features,
         explain=explain,
@@ -86,8 +100,13 @@ def compute_features(*, card, occurred_at, merchant, category, amount, merch_lat
     else:
         zscore, ratio = 0.0, 1.0
 
-    if card.home_lat is not None and merch_lat is not None:
-        distance = float(ml.haversine_km(card.home_lat, card.home_long, merch_lat, merch_long))
+    coords = (card.home_lat, card.home_long, merch_lat, merch_long)
+    if all(c is not None and np.isfinite(c) for c in coords):
+        h_lat, h_long, m_lat, m_long = coords
+        if -90 <= h_lat <= 90 and -180 <= h_long <= 180 and -90 <= m_lat <= 90 and -180 <= m_long <= 180:
+            distance = float(ml.haversine_km(h_lat, h_long, m_lat, m_long))
+        else:
+            distance = DEFAULT_DISTANCE_KM
     else:
         distance = DEFAULT_DISTANCE_KM
 
