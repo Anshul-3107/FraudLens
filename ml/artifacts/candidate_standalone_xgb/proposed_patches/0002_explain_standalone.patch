@@ -1,0 +1,38 @@
+diff --git a/ml/src/explain.py b/ml/src/explain.py
+--- a/ml/src/explain.py
++++ b/ml/src/explain.py
+@@ -12,7 +12,6 @@ GROUPS = {
+     "category": ["category_code"],
+     "velocity": ["txn_count_1h", "txn_count_24h", "secs_since_last"],
+     "novelty": ["is_new_merchant", "is_new_category"],
+-    "rarity": ["iso_score"],
+     "location": ["dist_home_merchant_km"],
+ }
+ 
+@@ -65,10 +64,6 @@ def _novelty(r):
+     return "Merchant and category pattern is unusual for this card"
+ 
+ 
+-def _rarity(r):
+-    return "The overall combination of details is rare compared with normal activity"
+-
+-
+ def _location(r):
+     return f"Merchant is {r['dist_home_merchant_km']:.0f} km from the cardholder's home"
+ 
+@@ -79,7 +74,6 @@ TEXT = {
+     "category": _category,
+     "velocity": _velocity,
+     "novelty": _novelty,
+-    "rarity": _rarity,
+     "location": _location,
+ }
+ 
+@@ -98,6 +92,8 @@ def explain(model, X, top_k=3, min_contrib=0.1):
+     feature_names = model.get_booster().feature_names
+     X = X[feature_names]
++    if len(X) == 0:
++        return []
+     contribs = shap_contribs(model, X)
+ 
+     idx = {name: i for i, name in enumerate(feature_names)}

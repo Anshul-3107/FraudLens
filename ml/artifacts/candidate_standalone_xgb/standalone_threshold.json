@@ -1,0 +1,9 @@
+{
+  "model_type": "standalone_xgboost",
+  "threshold": 0.20,
+  "review_cost": 5.0,
+  "validation_optimal_threshold": 0.14,
+  "operating_policy": "operational_parity_020",
+  "features_count": 14,
+  "description": "Operating threshold configuration for standalone XGBoost candidate (without Isolation Forest)."
+}

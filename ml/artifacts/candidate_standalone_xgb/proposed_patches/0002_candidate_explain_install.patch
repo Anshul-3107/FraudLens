@@ -1,0 +1,152 @@
+--- a/ml/src/candidate_explain.py
++++ b/ml/src/candidate_explain.py
+@@ -0,0 +1,149 @@
++"""Candidate Standalone Explainability Module for FraudLens.
++
++Generates human-understandable factor attributions using TreeSHAP for the
++standalone XGBoost candidate model (14 canonical features).
++
++Key Differences from Production explain.py:
++1. Removed 'rarity' factor group and dependency on 'iso_score'.
++2. Preserves the 6 core business factor groups:
++   - amount, time, category, velocity, novelty, location.
++3. Added robust input validation (missing columns, empty DataFrames, NaNs).
++4. Strictly isolated: does not modify or replace ml/src/explain.py.
++"""
++from pathlib import Path
++import sys
++import numpy as np
++import pandas as pd
++import xgboost as xgb
++
++# Ensure ml/src is in sys.path for features and explain imports
++ML_SRC = Path(__file__).resolve().parent.parent.parent / "src"
++if str(ML_SRC) not in sys.path:
++    sys.path.insert(0, str(ML_SRC))
++
++import explain
++from features import FEATURES, CATEGORIES
++
++# Canonical 6 business factor groups for standalone XGBoost (no iso_score)
++CANDIDATE_GROUPS = {
++    "amount": ["amt", "log_amt", "amt_zscore", "amt_ratio_to_mean"],
++    "time": ["is_night", "hour", "dayofweek"],
++    "category": ["category_code"],
++    "velocity": ["txn_count_1h", "txn_count_24h", "secs_since_last"],
++    "novelty": ["is_new_merchant", "is_new_category"],
++    "location": ["dist_home_merchant_km"],
++}
++
++# Reuse the existing validated factor text formatters from explain.py
++CANDIDATE_TEXT = {
++    "amount": explain._amount,
++    "time": explain._time,
++    "category": explain._category,
++    "velocity": explain._velocity,
++    "novelty": explain._novelty,
++    "location": explain._location,
++}
++
++
++def shap_contribs(model, X):
++    """Compute TreeSHAP values in log-odds.
++    
++    Shape: (n_rows, n_features + 1), where the final column is the base margin / bias.
++    """
++    booster = model.get_booster()
++    feature_names = booster.feature_names
++    
++    if not isinstance(X, pd.DataFrame):
++        X = pd.DataFrame(X, columns=feature_names)
++        
++    if len(X) == 0:
++        return np.empty((0, len(feature_names) + 1), dtype=float)
++        
++    missing = [f for f in feature_names if f not in X.columns]
++    if missing:
++        raise ValueError(f"Missing required feature columns for TreeSHAP: {missing}")
++        
++    X_ordered = X[feature_names]
++    
++    # Check for non-finite values in X
++    if not np.all(np.isfinite(X_ordered.to_numpy().astype(float))):
++        raise ValueError("Non-finite values detected in explanation feature input!")
++        
++    dmatrix = xgb.DMatrix(X_ordered)
++    contribs = booster.predict(
++        dmatrix, pred_contribs=True, iteration_range=(0, model.best_iteration + 1)
++    )
++    
++    if not np.all(np.isfinite(contribs)):
++        raise ValueError("Non-finite TreeSHAP values encountered!")
++        
++    return contribs
++
++
++def explain_candidate(model, X, top_k=3, min_contrib=0.1):
++    """Return, for each transaction in X, a list of top factors pushing toward 'fraud'.
++    
++    Parameters
++    ----------
++    model : XGBClassifier
++        Standalone candidate booster.
++    X : pd.DataFrame or dict or list of dicts
++        Transaction feature rows (must contain the 14 canonical features).
++    top_k : int
++        Maximum number of factors to return per transaction (default 3).
++    min_contrib : float
++        Minimum TreeSHAP log-odds contribution to be included as a reason (default 0.1).
++        
++    Returns
++    -------
++    list of list of dict
++        For each transaction row:
++        [{"factor": str, "impact": float, "text": str}, ...]
++    """
++    if isinstance(X, dict):
++        X = pd.DataFrame([X])
++    elif isinstance(X, list):
++        X = pd.DataFrame(X)
++    elif not isinstance(X, pd.DataFrame):
++        raise TypeError(f"Expected DataFrame, dict, or list of dicts, got {type(X)}")
++        
++    # Handle empty DataFrame safely (both with columns and without columns)
++    if len(X) == 0:
++        return []
++        
++    booster = model.get_booster()
++    feature_names = booster.feature_names
++    
++    missing = [f for f in feature_names if f not in X.columns]
++    if missing:
++        raise ValueError(f"Input features missing required columns: {missing}")
++        
++    contribs = shap_contribs(model, X)
++    idx = {name: i for i, name in enumerate(feature_names)}
++    
++    group_names = list(CANDIDATE_GROUPS)
++    # Aggregate contributions by group
++    scores = np.column_stack([
++        contribs[:, [idx[f] for f in CANDIDATE_GROUPS[g]]].sum(axis=1) for g in group_names
++    ])
++    
++    rows = X[feature_names].to_dict("records")
++    out = []
++    k = max(int(top_k), 0)
++    for i, row in enumerate(rows):
++        if k == 0:
++            out.append([])
++            continue
++        order = np.argsort(-scores[i])[:k]
++        reasons = [
++            {
++                "factor": group_names[j],
++                "impact": round(float(scores[i, j]), 3),
++                "text": CANDIDATE_TEXT[group_names[j]](row),
++            }
++            for j in order
++            if scores[i, j] >= min_contrib
++        ]
++        out.append(reasons)
++        
++    return out

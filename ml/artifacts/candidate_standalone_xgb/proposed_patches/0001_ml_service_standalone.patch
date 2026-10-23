@@ -1,0 +1,61 @@
+--- a/backend/transactions/ml_service.py
++++ b/backend/transactions/ml_service.py
+@@ -39,21 +39,25 @@
+ @lru_cache(maxsize=1)
+ def get_bundle():
+     features = _load_module("features", "features.py")    # must load first: explain.py imports it
+-    explain = _load_module("explain", "explain.py")
++    explain = _load_module("candidate_explain", "candidate_explain.py")
+     artifacts = Path(settings.ML_ARTIFACTS_DIR)
+ 
+-    iso_path = artifacts / "isolation_forest.joblib"
+-    model_path = artifacts / "xgb_with_iso.joblib"
+-    threshold_path = artifacts / "threshold.json"
++    # Resolves correctly whether candidate is in candidate directory or promoted top-level
++    candidate_dir_model = artifacts / "candidate_standalone_xgb" / "xgb_model.joblib"
++    model_path = candidate_dir_model if candidate_dir_model.is_file() else (artifacts / "xgb_model.joblib")
+ 
+-    for path in (iso_path, model_path, threshold_path):
++    candidate_dir_thresh = artifacts / "candidate_standalone_xgb" / "standalone_threshold.json"
++    threshold_path = candidate_dir_thresh if candidate_dir_thresh.is_file() else (artifacts / "standalone_threshold.json")
++
++    for path in (model_path, threshold_path):
+         if not path.is_file():
+             raise FileNotFoundError(f"Missing required ML artifact: {path}")
+ 
+-    iso = joblib.load(iso_path)
+     model = joblib.load(model_path)
+     try:
+         threshold_data = json.loads(threshold_path.read_text(encoding="utf-8"))
++        if threshold_data.get("model_type") != "standalone_xgboost":
++            raise ValueError(f"Incompatible threshold config: expected model_type 'standalone_xgboost', got '{threshold_data.get('model_type')}'")
+         threshold = float(threshold_data["threshold"])
+     except (json.JSONDecodeError, KeyError, TypeError, ValueError) as e:
+         raise ValueError(f"Invalid threshold artifact {threshold_path}: {e}") from e
+@@ -61,11 +65,9 @@
+     return SimpleNamespace(
+         features=features,
+         explain=explain,
+-        iso=iso,
+         model=model,
+         threshold=threshold,
+-        if_cols=list(iso.feature_names_in_),
+-        xgb_cols=list(model.get_booster().feature_names),
++        features_list=list(features.FEATURES),
+     )
+ 
+ 
+@@ -137,11 +139,10 @@
+         amount=amount, merch_lat=merch_lat, merch_long=merch_long,
+     )
+     row = pd.DataFrame([feats])
+-    row["iso_score"] = -bundle.iso.score_samples(row[bundle.if_cols])
+-    X = row[bundle.xgb_cols]
++    X = row[bundle.features_list]
+     score = float(bundle.model.predict_proba(X)[0, 1])
+     flagged = score >= bundle.threshold
+-    reasons = bundle.explain.explain(bundle.model, X)[0] if flagged else []
++    reasons = bundle.explain.explain_candidate(bundle.model, X)[0] if flagged else []
+     return {
+         "score": score,
+         "flagged": flagged,

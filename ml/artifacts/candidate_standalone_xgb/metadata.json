@@ -1,0 +1,142 @@
+{
+  "candidate": "candidate_standalone_xgb",
+  "diagnostic_mode": false,
+  "created_at_utc": "2026-10-22T17:46:32.244635+00:00",
+  "method": "Standalone XGBClassifier trained on canonical 14 raw features without Isolation Forest",
+  "seed": 42,
+  "features": [
+    "amt",
+    "log_amt",
+    "hour",
+    "dayofweek",
+    "is_night",
+    "category_code",
+    "dist_home_merchant_km",
+    "amt_zscore",
+    "amt_ratio_to_mean",
+    "secs_since_last",
+    "txn_count_1h",
+    "txn_count_24h",
+    "is_new_merchant",
+    "is_new_category"
+  ],
+  "hyperparameters": {
+    "n_estimators": 1000,
+    "learning_rate": 0.05,
+    "max_depth": 6,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "scale_pos_weight": 172.73164943210713,
+    "eval_metric": "aucpr",
+    "early_stopping_rounds": 50,
+    "tree_method": "hist",
+    "best_iteration": 927
+  },
+  "operating_threshold": 0.14,
+  "review_cost": 5.0,
+  "validation_metrics": {
+    "pr_auc": 0.9030755491288366,
+    "roc_auc": 0.9983733288704826,
+    "brier_score": 0.0035889825539821354,
+    "log_loss": 0.013197538818322365,
+    "threshold": 0.14,
+    "alerts": 4168,
+    "alerts_per_10k": 153.32999793990405,
+    "tp": 1545,
+    "fp": 2623,
+    "fn": 62,
+    "tn": 267602,
+    "precision": 0.3706813819577735,
+    "recall": 0.9614187927815806,
+    "specificity": 0.9902932741234157,
+    "missed_fraud_loss": 8258.749999999998,
+    "review_expense": 20840.0,
+    "total_cost": 29098.75,
+    "no_model_cost": 853720.27,
+    "savings_vs_no_model": 0.9659153577318715
+  },
+  "test_metrics_at_selected_threshold": {
+    "pr_auc": 0.8589620647634238,
+    "roc_auc": 0.996870330802199,
+    "brier_score": 0.0033283296012574302,
+    "log_loss": 0.012435273084561434,
+    "threshold": 0.14,
+    "alerts": 6955,
+    "alerts_per_10k": 125.15317993446328,
+    "tp": 2020,
+    "fp": 4935,
+    "fn": 125,
+    "tn": 548639,
+    "precision": 0.29043853342918763,
+    "recall": 0.9417249417249417,
+    "specificity": 0.9910852027009939,
+    "missed_fraud_loss": 17740.26,
+    "review_expense": 34775.0,
+    "total_cost": 52515.259999999995,
+    "no_model_cost": 1133324.6800000002,
+    "savings_vs_no_model": 0.953662652083073
+  },
+  "test_metrics_at_threshold_020": {
+    "pr_auc": 0.8589620647634238,
+    "roc_auc": 0.996870330802199,
+    "brier_score": 0.0033283296012574302,
+    "log_loss": 0.012435273084561434,
+    "threshold": 0.2,
+    "alerts": 6122,
+    "alerts_per_10k": 110.1635898718597,
+    "tp": 2011,
+    "fp": 4111,
+    "fn": 134,
+    "tn": 549463,
+    "precision": 0.3284874224109768,
+    "recall": 0.9375291375291376,
+    "specificity": 0.9925737119156608,
+    "missed_fraud_loss": 18182.530000000002,
+    "review_expense": 30610.0,
+    "total_cost": 48792.53,
+    "no_model_cost": 1133324.6800000002,
+    "savings_vs_no_model": 0.9569474389280925
+  },
+  "false_positive_analysis": {
+    "by_category": {
+      "shopping_pos": {
+        "legit_txns": 49578,
+        "false_alerts": 704,
+        "fp_rate": 0.014199846706200331
+      },
+      "shopping_net": {
+        "legit_txns": 41273,
+        "false_alerts": 626,
+        "fp_rate": 0.01516730065660359
+      },
+      "kids_pets": {
+        "legit_txns": 48627,
+        "false_alerts": 596,
+        "fp_rate": 0.012256565282661896
+      },
+      "personal_care": {
+        "legit_txns": 39257,
+        "false_alerts": 564,
+        "fp_rate": 0.014366864508240568
+      },
+      "misc_pos": {
+        "legit_txns": 34502,
+        "false_alerts": 472,
+        "fp_rate": 0.01368036635557359
+      }
+    },
+    "by_night": {
+      "0": {
+        "legit_txns": 425242,
+        "false_alerts": 1875,
+        "fp_rate": 0.004409254024767073
+      },
+      "1": {
+        "legit_txns": 128332,
+        "false_alerts": 3060,
+        "fp_rate": 0.023844403578218994
+      }
+    }
+  },
+  "note": "Candidate model isolated from production inference."
+}

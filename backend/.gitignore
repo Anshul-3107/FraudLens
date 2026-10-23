@@ -1,0 +1,8 @@
+# Staging environment secrets & isolated database
+.env.staging
+db_staging.sqlite3
+db_staging.sqlite3-journal
+
+# Shadow evaluation telemetry logs
+logs/
+*.jsonl
