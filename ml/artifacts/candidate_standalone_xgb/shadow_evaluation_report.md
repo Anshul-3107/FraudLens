@@ -1,6 +1,6 @@
 # FraudLens Standalone XGBoost: Shadow Evaluation Report
 
-**Evaluation Date (UTC):** 2026-10-22T18:11:08.355656+00:00
+**Evaluation Date (UTC):** 2026-10-24T08:22:02.994918+00:00
 **Target System:** FraudLens (`D:\FraudLens`)
 **Evaluation Mode:** Read-Only Offline Shadow Benchmark
 
@@ -14,7 +14,7 @@ This report presents an offline shadow evaluation comparing the current producti
 2. **Operational Threshold Tradeoff:**
    - **Candidate at Validation Optimum (0.14):** Catches **16 more frauds** (94.17% vs 93.43% recall), reducing missed fraud losses by -$1,156.58. However, it increases alert volume by **+18.3% (+1,076 alerts)**, increasing review expense by +$5,380.00 at $5/alert (illustrative net cost: $52,515.26 vs. $48,291.84).
    - **Candidate at Operational Parity (0.20):** Catches **7 more frauds** (93.75% recall), alert volume increases by only **+4.1% (+243 alerts)**, and illustrative total cost is within **1.0% of production** ($48,792.53 vs. $48,291.84).
-3. **Inference Efficiency:** Standalone XGBoost eliminates 200 Isolation Forest trees, reducing per-transaction scoring latency from **85.34ms** to **9.33ms** (median) and **108.06ms** to **10.51ms** (p95), and increasing bulk test throughput from **103,602 txn/s** to **651,258 txn/s**.
+3. **Inference Efficiency:** Standalone XGBoost eliminates 200 Isolation Forest trees, reducing per-transaction scoring latency from **86.56ms** to **11.78ms** (median) and **137.97ms** to **13.64ms** (p95), and increasing bulk test throughput from **97,583 txn/s** to **651,272 txn/s**.
 4. **Explainability Incompatibility:** Calling `explain.explain()` directly with the candidate model raises `KeyError: 'iso_score'` because `explain.py` hardcodes `"rarity": ["iso_score"]`. Removing the `rarity` grouping enables 100% clean TreeSHAP explanations based solely on canonical business features.
 
 ---
@@ -60,12 +60,12 @@ is an **illustrative decision-support model**, not measured business savings.
 
 | Metric | Production Ensemble (`xgb_with_iso` + IF) | Standalone Candidate (`xgb_model`) | Operational Advantage |
 | :--- | :---: | :---: | :--- |
-| **Sequential Median Latency (batch=1)** | **85.343 ms** | **9.333 ms** | **89.1% faster** |
-| **Sequential p95 Latency (batch=1)** | **108.063 ms** | **10.510 ms** | **90.3% faster** |
-| **Sequential Mean Latency** | 89.105 ms | 9.457 ms | 89.4% faster |
-| **Sequential Throughput** | 11.2 txn/s | 105.4 txn/s | +94.2 txn/s |
-| **Bulk Scoring Time (555,719 rows)** | 5.36 s | 0.85 s | 4.51 s saved |
-| **Bulk Scoring Throughput** | 103,602 txn/s | 651,258 txn/s | **+547,656 txn/s** |
+| **Sequential Median Latency (batch=1)** | **86.561 ms** | **11.776 ms** | **86.4% faster** |
+| **Sequential p95 Latency (batch=1)** | **137.968 ms** | **13.639 ms** | **90.1% faster** |
+| **Sequential Mean Latency** | 95.340 ms | 12.658 ms | 86.7% faster |
+| **Sequential Throughput** | 10.5 txn/s | 78.8 txn/s | +68.3 txn/s |
+| **Bulk Scoring Time (555,719 rows)** | 5.69 s | 0.85 s | 4.84 s saved |
+| **Bulk Scoring Throughput** | 97,583 txn/s | 651,272 txn/s | **+553,689 txn/s** |
 | **Model Tree Count** | 1,182 trees (200 IF + 982 XGB) | 927 trees (927 XGB) | -255 trees (-21.6%) |
 | **Artifact Footprint on Disk** | 6.33 MB (2 files) | 4.01 MB (1 file) | -2.32 MB (-36.7%) |
 
