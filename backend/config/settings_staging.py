@@ -17,6 +17,7 @@ from django.core.exceptions import ImproperlyConfigured
 # Step 1: Explicitly load .env.staging before base settings evaluate variables
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env.staging", override=False)
+os.environ.setdefault("FRAUDLENS_ENV", "staging")
 
 # Step 2: Import base settings (will read already-populated os.environ)
 from .settings import *  # noqa: F401, F403

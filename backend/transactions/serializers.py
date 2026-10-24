@@ -16,6 +16,11 @@ class RegisterSerializer(serializers.Serializer):
     email = serializers.EmailField(required=False, allow_blank=True)
 
     def validate_username(self, value):
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError("Username cannot be blank.")
+        if len(value) < 3:
+            raise serializers.ValidationError("Username must be at least 3 characters long.")
         if User.objects.filter(username__iexact=value).exists():
             raise serializers.ValidationError("That username is already taken.")
         return value
@@ -29,9 +34,9 @@ class RegisterSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         return User.objects.create_user(
-            username=validated_data["username"],
+            username=validated_data["username"].strip(),
             password=validated_data["password"],
-            email=validated_data.get("email", ""),
+            email=validated_data.get("email", "").strip(),
         )
 
 
@@ -60,7 +65,7 @@ class TransactionCreateSerializer(serializers.Serializer):
     occurred_at = serializers.DateTimeField()
     merchant = serializers.CharField(max_length=255)
     category = serializers.ChoiceField(choices=Transaction.Category.choices)
-    amount = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal("0.01"))
+    amount = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal("0.01"), max_value=Decimal("10000000.00"))
     merch_lat = serializers.FloatField(required=False, allow_null=True, min_value=-90, max_value=90)
     merch_long = serializers.FloatField(required=False, allow_null=True, min_value=-180, max_value=180)
     trans_ref = serializers.CharField(max_length=64, required=False)
@@ -71,6 +76,24 @@ class TransactionCreateSerializer(serializers.Serializer):
         ],
         default=Transaction.Source.UPLOAD.value,
     )
+
+    def validate_merchant(self, value):
+        val = value.strip()
+        if not val:
+            raise serializers.ValidationError("Merchant cannot be empty.")
+        return val
+
+    def validate_merch_lat(self, value):
+        import math
+        if value is not None and not math.isfinite(value):
+            raise serializers.ValidationError("merch_lat must be a finite number.")
+        return value
+
+    def validate_merch_long(self, value):
+        import math
+        if value is not None and not math.isfinite(value):
+            raise serializers.ValidationError("merch_long must be a finite number.")
+        return value
 
     def validate_trans_ref(self, value):
         if not value:

@@ -1,3 +1,4 @@
+import logging
 import math
 
 from django.contrib.auth import get_user_model
@@ -7,9 +8,11 @@ from django.db.models.functions import TruncMonth
 from django.utils.dateparse import parse_date
 from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.authtoken.models import Token
+from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.decorators import action
 from rest_framework.exceptions import ParseError, ValidationError
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from .ingest import ingest_transaction
@@ -21,9 +24,18 @@ from .serializers import (
 )
 
 User = get_user_model()
+logger = logging.getLogger("fraudlens.security")
 
 
 # ---------------------------------------------------------------- helpers
+def get_client_ip(request):
+    """Extract client IP safely from request headers or remote address."""
+    xff = request.META.get("HTTP_X_FORWARDED_FOR")
+    if xff:
+        return xff.split(",")[0].strip()
+    return request.META.get("REMOTE_ADDR", "unknown")
+
+
 def visible_cards(user):
     """Staff see every card; everyone else only their own."""
     cards = Card.objects.all()
@@ -70,13 +82,79 @@ def param_date(params, key):
 class RegisterView(APIView):
     permission_classes = [permissions.AllowAny]
     authentication_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth_register"
 
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            logger.warning(
+                "Registration rejected from IP %s: %s",
+                get_client_ip(request),
+                list(serializer.errors.keys()),
+            )
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         user = serializer.save()
         token, _ = Token.objects.get_or_create(user=user)
+        logger.info(
+            "New user registered: username='%s', id=%s from IP %s",
+            user.username,
+            user.id,
+            get_client_ip(request),
+        )
         return Response({"token": token.key, "username": user.username}, status=status.HTTP_201_CREATED)
+
+
+class LoginView(ObtainAuthToken):
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth_login"
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            username = request.data.get("username", "") if isinstance(request.data, dict) else ""
+            logger.warning(
+                "Failed login attempt for username '%s' from IP %s",
+                str(username)[:50],
+                get_client_ip(request),
+            )
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        user = serializer.validated_data["user"]
+        token, _ = Token.objects.get_or_create(user=user)
+        logger.info(
+            "Successful login for user '%s' (id=%s) from IP %s",
+            user.username,
+            user.id,
+            get_client_ip(request),
+        )
+        return Response({"token": token.key})
+
+
+class LogoutView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        token_deleted = False
+        if hasattr(request, "auth") and isinstance(request.auth, Token):
+            request.auth.delete()
+            token_deleted = True
+        elif hasattr(user, "auth_token"):
+            try:
+                user.auth_token.delete()
+                token_deleted = True
+            except Token.DoesNotExist:
+                pass
+        if hasattr(request, "session") and request.session:
+            request.session.flush()
+        logger.info(
+            "User '%s' (id=%s) logged out (token_revoked=%s) from IP %s",
+            user.username,
+            user.id,
+            token_deleted,
+            get_client_ip(request),
+        )
+        return Response({"detail": "Successfully logged out. Token revoked."}, status=status.HTTP_200_OK)
 
 
 class MeView(APIView):
@@ -119,12 +197,18 @@ class TransactionViewSet(
             qs = qs.filter(card_id=card)
         if p.get("category"):
             qs = qs.filter(category=p["category"])
-        if p.get("search"):
-            qs = qs.filter(merchant__icontains=p["search"])
-        if (d := param_date(p, "date_from")) is not None:
-            qs = qs.filter(occurred_at__date__gte=d)
-        if (d := param_date(p, "date_to")) is not None:
-            qs = qs.filter(occurred_at__date__lte=d)
+        if search_term := p.get("search"):
+            if len(search_term) > 100:
+                raise ParseError("'search' query parameter cannot exceed 100 characters.")
+            qs = qs.filter(merchant__icontains=search_term)
+        d_from = param_date(p, "date_from")
+        d_to = param_date(p, "date_to")
+        if d_from and d_to and d_from > d_to:
+            raise ParseError("'date_from' cannot be later than 'date_to'.")
+        if d_from is not None:
+            qs = qs.filter(occurred_at__date__gte=d_from)
+        if d_to is not None:
+            qs = qs.filter(occurred_at__date__lte=d_to)
         if (amount := param_float(p, "min_amount")) is not None:
             qs = qs.filter(amount__gte=amount)
         if p.get("flagged", "").lower() == "true":
@@ -217,6 +301,13 @@ class AlertViewSet(viewsets.ReadOnlyModelViewSet):
             needs_info = investigation.verdict == Investigation.Verdict.NEEDS_INFO
             alert.status = Alert.Status.IN_REVIEW if needs_info else Alert.Status.RESOLVED
             alert.save(update_fields=["status"])
+        logger.info(
+            "Investigation recorded for Alert #%s by user '%s' (verdict=%s, status=%s)",
+            alert.id,
+            request.user.username,
+            investigation.verdict,
+            alert.status,
+        )
         return Response(InvestigationSerializer(investigation).data, status=status.HTTP_201_CREATED)
 
 
@@ -241,10 +332,14 @@ class SummaryView(APIView):
         txns = Transaction.objects.filter(card__in=visible_cards(request.user))
         if (card := param_int(p, "card")) is not None:
             txns = txns.filter(card_id=card)
-        if (d := param_date(p, "date_from")) is not None:
-            txns = txns.filter(occurred_at__date__gte=d)
-        if (d := param_date(p, "date_to")) is not None:
-            txns = txns.filter(occurred_at__date__lte=d)
+        d_from = param_date(p, "date_from")
+        d_to = param_date(p, "date_to")
+        if d_from and d_to and d_from > d_to:
+            raise ParseError("'date_from' cannot be later than 'date_to'.")
+        if d_from is not None:
+            txns = txns.filter(occurred_at__date__gte=d_from)
+        if d_to is not None:
+            txns = txns.filter(occurred_at__date__lte=d_to)
 
         totals = txns.aggregate(total=Sum("amount"), count=Count("id"))
         by_category = (
