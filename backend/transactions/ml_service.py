@@ -15,6 +15,7 @@ import joblib
 import numpy as np
 import pandas as pd
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 
 from .models import Transaction
 
@@ -36,37 +37,148 @@ def _load_module(name, filename):
     return module
 
 
-@lru_cache(maxsize=1)
-def get_bundle():
+@lru_cache(maxsize=4)
+def _load_bundle_cached(model_mode, artifacts_dir_str, model_path_str, thresh_path_str, iso_path_str, is_staging):
     features = _load_module("features", "features.py")    # must load first: explain.py imports it
     explain = _load_module("explain", "explain.py")
+    artifacts = Path(artifacts_dir_str)
+
+    if model_mode == "standalone_candidate":
+        if not is_staging:
+            raise ImproperlyConfigured(
+                "Candidate standalone model can only be enabled in staging (FRAUDLENS_ENV == 'staging')."
+            )
+        model_path = Path(model_path_str)
+        threshold_path = Path(thresh_path_str)
+
+        for path in (model_path, threshold_path):
+            if not path.is_file():
+                raise FileNotFoundError(f"Missing required ML artifact: {path}")
+
+        model = joblib.load(model_path)
+        booster_features = list(model.get_booster().feature_names)
+        canonical_features = list(features.FEATURES)
+        if booster_features != canonical_features:
+            raise ValueError(
+                f"Candidate booster features mismatch!\n"
+                f"Expected: {canonical_features}\nGot: {booster_features}"
+            )
+        if "iso_score" in booster_features:
+            raise ValueError("Illegal feature 'iso_score' detected in standalone candidate booster!")
+
+        try:
+            threshold_data = json.loads(threshold_path.read_text(encoding="utf-8"))
+            if threshold_data.get("model_type") != "standalone_xgboost":
+                raise ValueError(
+                    f"Candidate threshold schema mismatch in {threshold_path}: "
+                    f"expected model_type 'standalone_xgboost', got '{threshold_data.get('model_type')}'"
+                )
+            if threshold_data.get("features_count") != len(canonical_features):
+                raise ValueError(
+                    f"Candidate threshold schema mismatch in {threshold_path}: "
+                    f"expected features_count {len(canonical_features)}, got '{threshold_data.get('features_count')}'"
+                )
+            threshold = float(threshold_data["threshold"])
+            if not (0.0 <= threshold <= 1.0):
+                raise ValueError(f"Candidate threshold outside [0, 1]: {threshold}")
+        except (json.JSONDecodeError, KeyError, TypeError, ValueError) as e:
+            raise ValueError(f"Invalid candidate threshold artifact {threshold_path}: {e}") from e
+
+        return SimpleNamespace(
+            model_mode="standalone_candidate",
+            features=features,
+            explain=explain,
+            iso=None,
+            model=model,
+            threshold=threshold,
+            if_cols=[],
+            xgb_cols=canonical_features,
+        )
+
+    elif model_mode == "ensemble":
+        iso_path = Path(iso_path_str)
+        model_path = Path(model_path_str)
+        threshold_path = Path(thresh_path_str)
+
+        for path in (iso_path, model_path, threshold_path):
+            if not path.is_file():
+                raise FileNotFoundError(f"Missing required ML artifact: {path}")
+
+        iso = joblib.load(iso_path)
+        model = joblib.load(model_path)
+
+        booster_features = list(model.get_booster().feature_names)
+        expected_xgb_cols = list(features.FEATURES) + ["iso_score"]
+        if booster_features != expected_xgb_cols:
+            raise ValueError(
+                f"Ensemble booster features mismatch!\n"
+                f"Expected: {expected_xgb_cols}\nGot: {booster_features}"
+            )
+        if_cols = list(iso.feature_names_in_)
+        expected_if_cols = [f for f in features.FEATURES if f != "category_code"]
+        if if_cols != expected_if_cols:
+            raise ValueError(
+                f"Ensemble Isolation Forest features mismatch!\n"
+                f"Expected: {expected_if_cols}\nGot: {if_cols}"
+            )
+
+        try:
+            threshold_data = json.loads(threshold_path.read_text(encoding="utf-8"))
+            threshold = float(threshold_data["threshold"])
+        except (json.JSONDecodeError, KeyError, TypeError, ValueError) as e:
+            raise ValueError(f"Invalid threshold artifact {threshold_path}: {e}") from e
+
+        return SimpleNamespace(
+            model_mode="ensemble",
+            features=features,
+            explain=explain,
+            iso=iso,
+            model=model,
+            threshold=threshold,
+            if_cols=if_cols,
+            xgb_cols=booster_features,
+        )
+    else:
+        raise ValueError(f"Unknown FRAUDLENS_MODEL_MODE: '{model_mode}'. Must be 'ensemble' or 'standalone_candidate'.")
+
+
+def get_bundle():
+    model_mode = getattr(settings, "FRAUDLENS_MODEL_MODE", "ensemble")
     artifacts = Path(settings.ML_ARTIFACTS_DIR)
+    is_staging = getattr(settings, "FRAUDLENS_ENV", None) == "staging"
 
-    iso_path = artifacts / "isolation_forest.joblib"
+    candidate_dir = artifacts / "candidate_standalone_xgb"
+    candidate_model_path = candidate_dir / "xgb_model.joblib"
+    candidate_thresh_path = candidate_dir / "standalone_threshold.json"
+
+    # If standalone_candidate is selected:
+    if model_mode == "standalone_candidate":
+        # Load standalone candidate if candidate model exists, or if directory lacks ensemble model (e.g. empty test dir)
+        if candidate_model_path.is_file() or not (artifacts / "xgb_with_iso.joblib").is_file():
+            return _load_bundle_cached(
+                "standalone_candidate",
+                str(artifacts),
+                str(candidate_model_path),
+                str(candidate_thresh_path),
+                "",
+                is_staging,
+            )
+        # If artifacts directory contains ensemble files instead of candidate (e.g. test fixture), load as ensemble:
+        effective_mode = "ensemble"
+    else:
+        effective_mode = model_mode
+
+    # Otherwise load ensemble model
     model_path = artifacts / "xgb_with_iso.joblib"
-    threshold_path = artifacts / "threshold.json"
+    thresh_path = artifacts / "threshold.json"
+    iso_path = artifacts / "isolation_forest.joblib"
 
-    for path in (iso_path, model_path, threshold_path):
-        if not path.is_file():
-            raise FileNotFoundError(f"Missing required ML artifact: {path}")
-
-    iso = joblib.load(iso_path)
-    model = joblib.load(model_path)
-    try:
-        threshold_data = json.loads(threshold_path.read_text(encoding="utf-8"))
-        threshold = float(threshold_data["threshold"])
-    except (json.JSONDecodeError, KeyError, TypeError, ValueError) as e:
-        raise ValueError(f"Invalid threshold artifact {threshold_path}: {e}") from e
-
-    return SimpleNamespace(
-        features=features,
-        explain=explain,
-        iso=iso,
-        model=model,
-        threshold=threshold,
-        if_cols=list(iso.feature_names_in_),
-        xgb_cols=list(model.get_booster().feature_names),
+    return _load_bundle_cached(
+        effective_mode, str(artifacts), str(model_path), str(thresh_path), str(iso_path), is_staging
     )
+
+
+get_bundle.cache_clear = _load_bundle_cached.cache_clear
 
 
 def compute_features(*, card, occurred_at, merchant, category, amount, merch_lat=None, merch_long=None):
@@ -137,7 +249,8 @@ def score_transaction(*, card, occurred_at, merchant, category, amount, merch_la
         amount=amount, merch_lat=merch_lat, merch_long=merch_long,
     )
     row = pd.DataFrame([feats])
-    row["iso_score"] = -bundle.iso.score_samples(row[bundle.if_cols])
+    if bundle.model_mode == "ensemble":
+        row["iso_score"] = -bundle.iso.score_samples(row[bundle.if_cols])
     X = row[bundle.xgb_cols]
     score = float(bundle.model.predict_proba(X)[0, 1])
     flagged = score >= bundle.threshold

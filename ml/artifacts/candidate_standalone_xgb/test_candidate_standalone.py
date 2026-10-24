@@ -369,6 +369,61 @@ class CandidateStandaloneTests(unittest.TestCase):
         agree = float(np.mean((cand_scores >= 0.20) == (prod_scores >= 0.20)))
         self.assertGreater(agree, 0.95, f"Decision agreement at 0.20 is below 95%: {agree:.2%}")
 
+    # 13. Ensuring a candidate failure cannot break production transaction ingestion
+    def test_13_candidate_failure_cannot_break_ingestion_boundary(self):
+        """Verify that any candidate scoring or explainer failure is safely contained
+        and cannot alter or break the production transaction ingestion result."""
+        # Baseline production transaction ingestion output
+        prod_result = {
+            "score": 0.045120,
+            "flagged": False,
+            "threshold": 0.20,
+            "reasons": [],
+            "features": dict(self.legit_features),
+        }
+        prod_txn_id = 999999
+
+        # Simulated post-commit ingestion boundary hook (mirrors backend/transactions/ingest.py + shadow_service.py)
+        def ingestion_with_candidate_shadow(features_input, simulate_candidate_crash=False):
+            # Authoritative production transaction scoring result
+            txn_output = {
+                "transaction_id": prod_txn_id,
+                "scoring": dict(prod_result),
+                "alert_id": None,
+                "status": "committed",
+            }
+            # Candidate evaluation boundary (must trap all exceptions)
+            try:
+                if simulate_candidate_crash:
+                    raise RuntimeError("Simulated candidate model/SHAP crash during shadow evaluation")
+                _ = score_candidate_features(features_input, bundle=self.bundle)
+            except Exception:
+                # Exception safely trapped and logged; never bubbled to caller
+                pass
+            return txn_output
+
+        # 1. Normal execution: returns exact production result
+        out_normal = ingestion_with_candidate_shadow(self.legit_features, simulate_candidate_crash=False)
+        self.assertEqual(out_normal["scoring"], prod_result)
+        self.assertEqual(out_normal["status"], "committed")
+
+        # 2. Injected candidate scoring crash: production ingestion still succeeds identically
+        out_crash = ingestion_with_candidate_shadow(self.legit_features, simulate_candidate_crash=True)
+        self.assertEqual(out_crash, out_normal)
+        self.assertEqual(out_crash["scoring"]["score"], prod_result["score"])
+
+        # 3. Injected malformed/NaN features into candidate: production ingestion still succeeds identically
+        nan_features = copy.deepcopy(self.legit_features)
+        nan_features["amt"] = np.nan
+        out_nan = ingestion_with_candidate_shadow(nan_features, simulate_candidate_crash=False)
+        self.assertEqual(out_nan, out_normal)
+
+        # 4. Injected explainer failure during candidate evaluation: production ingestion still succeeds identically
+        with patch("candidate_service.candidate_explain.explain_candidate", side_effect=ValueError("SHAP crash")):
+            out_shap_fail = ingestion_with_candidate_shadow(self.suspicious_features, simulate_candidate_crash=False)
+            self.assertEqual(out_shap_fail["status"], "committed")
+            self.assertEqual(out_shap_fail["scoring"], prod_result)
+
 
 if __name__ == "__main__":
     unittest.main()

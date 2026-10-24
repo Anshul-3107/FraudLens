@@ -100,9 +100,16 @@ def explain(model, X, top_k=3, min_contrib=0.1):
     contribs = shap_contribs(model, X)
 
     idx = {name: i for i, name in enumerate(feature_names)}
-    group_names = list(GROUPS)
+    # Support both ensemble (15 features with iso_score) and standalone candidate (14 features).
+    # Filters factor groups dynamically based on features present in the model's booster.
+    active_groups = {
+        g: [f for f in cols if f in idx]
+        for g, cols in GROUPS.items()
+        if any(f in idx for f in cols)
+    }
+    group_names = list(active_groups)
     scores = np.column_stack([
-        contribs[:, [idx[f] for f in GROUPS[g]]].sum(axis=1) for g in group_names
+        contribs[:, [idx[f] for f in active_groups[g]]].sum(axis=1) for g in group_names
     ])
 
     rows = X.to_dict("records")

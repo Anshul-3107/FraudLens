@@ -52,7 +52,7 @@ def sha256_file(filepath):
     return h.hexdigest()
 
 def get_db_counts():
-    con = sqlite3.connect(DB_PATH)
+    con = sqlite3.connect(f"{DB_PATH.resolve().as_uri()}?mode=ro", uri=True)
     cur = con.cursor()
     counts = {}
     for table in ["transactions_transaction", "transactions_alert", "transactions_card", "auth_user"]:

@@ -85,6 +85,10 @@ CANDIDATE_MODEL_PATH = (ML_CANDIDATE_DIR / "xgb_model.joblib").resolve()
 CANDIDATE_THRESHOLD_PATH = (ML_CANDIDATE_DIR / "standalone_threshold.json").resolve()
 CANDIDATE_EXPLAIN_PATH = (ML_CANDIDATE_DIR / "candidate_explain.py").resolve()
 
+# Staging scoring model configuration: use candidate standalone XGBoost (14 features)
+# Production defaults to "ensemble" (15 features with Isolation Forest)
+FRAUDLENS_MODEL_MODE = os.environ.get("FRAUDLENS_MODEL_MODE", "standalone_candidate")
+
 # Strict anti-fallback assertion: candidate artifacts must not point to production artifacts
 prod_model = (ML_ARTIFACTS_DIR / "xgb_with_iso.joblib").resolve()
 prod_thresh = (ML_ARTIFACTS_DIR / "threshold.json").resolve()
