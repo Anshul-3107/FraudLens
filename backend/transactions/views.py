@@ -17,6 +17,7 @@ from rest_framework.views import APIView
 
 from .ingest import ingest_transaction
 from .models import Alert, Card, Investigation, Transaction
+from .permissions import IsOwnerOrStaff
 from .serializers import (
     AlertSerializer, CardSerializer, InvestigationCreateSerializer,
     InvestigationSerializer, RegisterSerializer, TransactionCreateSerializer,
@@ -172,6 +173,7 @@ class MeView(APIView):
 # ---------------------------------------------------------------- data
 class CardViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = CardSerializer
+    permission_classes = [permissions.IsAuthenticated, IsOwnerOrStaff]
 
     def get_queryset(self):
         return visible_cards(self.request.user).order_by("id")
@@ -185,6 +187,7 @@ class TransactionViewSet(
     min_amount, flagged=true.
     POST: score and store a new transaction (see create)."""
     serializer_class = TransactionSerializer
+    permission_classes = [permissions.IsAuthenticated, IsOwnerOrStaff]
 
     def get_queryset(self):
         p = self.request.query_params
@@ -270,6 +273,7 @@ class AlertViewSet(viewsets.ReadOnlyModelViewSet):
     """Filters: status, card, min_score. Ordering: score, created_at,
     occurred_at (prefix with - for descending). Default is newest first."""
     serializer_class = AlertSerializer
+    permission_classes = [permissions.IsAuthenticated, IsOwnerOrStaff]
 
     def get_queryset(self):
         p = self.request.query_params
@@ -313,6 +317,7 @@ class AlertViewSet(viewsets.ReadOnlyModelViewSet):
 
 class InvestigationViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = InvestigationSerializer
+    permission_classes = [permissions.IsAuthenticated, IsOwnerOrStaff]
 
     def get_queryset(self):
         return (

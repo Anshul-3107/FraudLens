@@ -13,6 +13,9 @@ Tests verify:
 """
 from decimal import Decimal
 import json
+import os
+import subprocess
+import sys
 from unittest.mock import MagicMock, patch
 
 from django.conf import settings
@@ -256,6 +259,136 @@ class UserIsolationAndAuthorizationTests(SecurityHardeningBaseTestCase):
         self.assertEqual(data["transaction_count"], 1)
         self.assertEqual(data["total_spend"], float(self.txn_a.amount))
 
+    def test_query_parameter_card_tampering_transactions_returns_empty_results(self):
+        # User A querying with User B's card ID must not return User B's transactions
+        res = self.client_a.get(f"/api/transactions/?card={self.card_b.id}")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        results = res.json().get("results", res.json())
+        self.assertEqual(len(results), 0)
+        self.assertNotIn(self.txn_b.id, [t["id"] for t in results])
+
+        # Querying with own card ID returns own transaction
+        res_own = self.client_a.get(f"/api/transactions/?card={self.card_a.id}")
+        self.assertEqual(res_own.status_code, status.HTTP_200_OK)
+        own_results = res_own.json().get("results", res_own.json())
+        self.assertEqual(len(own_results), 1)
+        self.assertEqual(own_results[0]["id"], self.txn_a.id)
+
+    def test_query_parameter_card_tampering_alerts_returns_empty_results(self):
+        # User A querying alerts with User B's card ID must not return User B's alerts
+        res = self.client_a.get(f"/api/alerts/?card={self.card_b.id}")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        results = res.json().get("results", res.json())
+        self.assertEqual(len(results), 0)
+        self.assertNotIn(self.alert_b.id, [a["id"] for a in results])
+
+        # Querying alerts with own card ID returns own alert
+        res_own = self.client_a.get(f"/api/alerts/?card={self.card_a.id}")
+        self.assertEqual(res_own.status_code, status.HTTP_200_OK)
+        own_results = res_own.json().get("results", res_own.json())
+        self.assertEqual(len(own_results), 1)
+        self.assertEqual(own_results[0]["id"], self.alert_a.id)
+
+    def test_query_parameter_card_tampering_summary_returns_zero_and_no_victim_data(self):
+        # User A requesting summary with User B's card ID must return empty totals
+        res = self.client_a.get(f"/api/summary/?card={self.card_b.id}")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        data = res.json()
+
+        # Follows API schema contract
+        self.assertEqual(data["total_spend"], 0.0)
+        self.assertEqual(data["transaction_count"], 0)
+        self.assertEqual(data["alerts_by_status"], {})
+        self.assertEqual(data["by_category"], [])
+        self.assertEqual(data["monthly"], [])
+
+        # Confirm zero victim data leakage (e.g. User B spent $899.99 on electronics)
+        self.assertNotEqual(data["total_spend"], float(self.txn_b.amount))
+        self.assertNotIn("shopping_net", [c["category"] for c in data["by_category"]])
+
+        # User A requesting summary with own card ID returns own totals
+        res_own = self.client_a.get(f"/api/summary/?card={self.card_a.id}")
+        self.assertEqual(res_own.status_code, status.HTTP_200_OK)
+        data_own = res_own.json()
+        self.assertEqual(data_own["transaction_count"], 1)
+        self.assertEqual(data_own["total_spend"], float(self.txn_a.amount))
+
+    def test_detail_endpoints_preserve_404_not_found_for_inaccessible_records(self):
+        # Create an investigation on Alert B by User B
+        inv_b = Investigation.objects.create(
+            alert=self.alert_b,
+            analyst=self.user_b,
+            verdict=Investigation.Verdict.NEEDS_INFO,
+            notes="Private note by Bob",
+        )
+
+        detail_checks = [
+            (f"/api/cards/{self.card_b.id}/", "card"),
+            (f"/api/transactions/{self.txn_b.id}/", "transaction"),
+            (f"/api/alerts/{self.alert_b.id}/", "alert"),
+            (f"/api/investigations/{inv_b.id}/", "investigation"),
+        ]
+
+        for url, resource in detail_checks:
+            with self.subTest(resource=resource, url=url):
+                res = self.client_a.get(url)
+                self.assertEqual(
+                    res.status_code,
+                    status.HTTP_404_NOT_FOUND,
+                    f"Expected 404 for {resource} detail access by unauthorized user, got {res.status_code}",
+                )
+
+    def test_object_permission_unit_checks_and_fail_closed_behavior(self):
+        from transactions.permissions import IsOwnerOrStaff
+        perm = IsOwnerOrStaff()
+
+        class DummyRequest:
+            def __init__(self, user):
+                self.user = user
+
+        req_user_a = DummyRequest(self.user_a)
+        req_user_b = DummyRequest(self.user_b)
+        req_staff = DummyRequest(self.user_staff)
+        req_anon = DummyRequest(None)
+
+        # 1. Card ownership
+        self.assertTrue(perm.has_object_permission(req_user_a, None, self.card_a))
+        self.assertFalse(perm.has_object_permission(req_user_b, None, self.card_a))
+        self.assertTrue(perm.has_object_permission(req_staff, None, self.card_a))
+
+        # 2. Transaction ownership (via card.owner)
+        self.assertTrue(perm.has_object_permission(req_user_a, None, self.txn_a))
+        self.assertFalse(perm.has_object_permission(req_user_b, None, self.txn_a))
+        self.assertTrue(perm.has_object_permission(req_staff, None, self.txn_a))
+
+        # 3. Alert ownership (via transaction.card.owner)
+        self.assertTrue(perm.has_object_permission(req_user_a, None, self.alert_a))
+        self.assertFalse(perm.has_object_permission(req_user_b, None, self.alert_a))
+        self.assertTrue(perm.has_object_permission(req_staff, None, self.alert_a))
+
+        # 4. Investigation ownership (via alert.transaction.card.owner)
+        self.assertTrue(perm.has_object_permission(req_user_a, None, self.investigation_a))
+        self.assertFalse(perm.has_object_permission(req_user_b, None, self.investigation_a))
+        self.assertTrue(perm.has_object_permission(req_staff, None, self.investigation_a))
+
+        # 5. Orphaned card with no owner
+        orphaned_card = Card.objects.create(
+            owner=None,
+            card_ref="CARD-ORPHAN-001",
+            label="Orphaned Card",
+        )
+        self.assertFalse(perm.has_object_permission(req_user_a, None, orphaned_card))
+        self.assertFalse(perm.has_object_permission(req_user_b, None, orphaned_card))
+        self.assertTrue(perm.has_object_permission(req_staff, None, orphaned_card))
+
+        # 6. Unauthenticated request fails closed
+        self.assertFalse(perm.has_object_permission(req_anon, None, self.card_a))
+
+        # 7. Unsupported / unrecognized object type fails closed
+        self.assertFalse(perm.has_object_permission(req_user_a, None, {"some": "data"}))
+        self.assertFalse(perm.has_object_permission(req_user_a, None, self.user_a))
+        self.assertFalse(perm.has_object_permission(req_staff, None, object()))
+
 
 class StaffAccessBoundariesTests(SecurityHardeningBaseTestCase):
     def setUp(self):
@@ -498,6 +631,191 @@ class ProductionSettingsAndErrorSanitizationTests(TestCase):
             )
         self.assertIn("DEBUG cannot be True in production", str(ctx.exception))
 
+    def test_production_settings_validation_rejects_missing_or_sqlite_db_engine(self):
+        from config.settings import validate_security_settings
+
+        # SQLite in production must raise ImproperlyConfigured
+        with self.assertRaises(ImproperlyConfigured) as ctx:
+            validate_security_settings(
+                secret_key="a" * 50,
+                debug=False,
+                allowed_hosts=["fraudlens.example.com"],
+                is_production=True,
+                db_engine="sqlite",
+            )
+        self.assertIn("requires DB_ENGINE=postgres", str(ctx.exception))
+
+        # Missing db engine in production must raise ImproperlyConfigured
+        with self.assertRaises(ImproperlyConfigured) as ctx:
+            validate_security_settings(
+                secret_key="a" * 50,
+                debug=False,
+                allowed_hosts=["fraudlens.example.com"],
+                is_production=True,
+                db_engine="",
+            )
+        self.assertIn("requires DB_ENGINE=postgres", str(ctx.exception))
+
+        # Omitted db_engine in production must fail closed
+        with self.assertRaises(ImproperlyConfigured) as ctx:
+            validate_security_settings(
+                secret_key="a" * 50,
+                debug=False,
+                allowed_hosts=["fraudlens.example.com"],
+                is_production=True,
+            )
+        self.assertIn("requires DB_ENGINE=postgres", str(ctx.exception))
+
+    def test_production_settings_validation_rejects_wildcard_cors(self):
+        from config.settings import validate_security_settings
+
+        with self.assertRaises(ImproperlyConfigured) as ctx:
+            validate_security_settings(
+                secret_key="a" * 50,
+                debug=False,
+                allowed_hosts=["fraudlens.example.com"],
+                is_production=True,
+                cors_allow_all=True,
+                db_engine="postgres",
+            )
+        self.assertIn("CORS_ALLOW_ALL_ORIGINS cannot be True in production", str(ctx.exception))
+
+    def test_development_and_staging_allow_sqlite(self):
+        from config.settings import DEFAULT_INSECURE_SECRET, validate_security_settings
+
+        # Development mode allows SQLite and insecure secret without raising
+        try:
+            validate_security_settings(
+                secret_key=DEFAULT_INSECURE_SECRET,
+                debug=True,
+                allowed_hosts=["localhost", "127.0.0.1"],
+                is_production=False,
+                cors_allow_all=True,
+                db_engine="sqlite",
+            )
+        except ImproperlyConfigured as e:
+            self.fail(f"validate_security_settings unexpectedly raised in development: {e}")
+
+    def test_production_startup_subprocess_validations(self):
+        base_env = os.environ.copy()
+        base_env["PYTHONPATH"] = str(settings.BASE_DIR)
+        base_env["FRAUDLENS_ENV"] = "production"
+        base_env["DJANGO_SECRET_KEY"] = "a" * 50
+        base_env["DJANGO_ALLOWED_HOSTS"] = "fraudlens.example.com"
+        base_env["DB_ENGINE"] = "postgres"
+
+        # 1. Production with DEBUG=True fails startup
+        debug_env = base_env.copy()
+        debug_env["DJANGO_DEBUG"] = "1"
+        res_debug = subprocess.run(
+            [sys.executable, "-c", "import config.settings"],
+            cwd=str(settings.BASE_DIR),
+            env=debug_env,
+            capture_output=True,
+            text=True,
+        )
+        self.assertNotEqual(res_debug.returncode, 0)
+        self.assertIn("DEBUG cannot be True in production", res_debug.stderr)
+
+        # 2. Production with SQLite fails startup
+        sqlite_env = base_env.copy()
+        sqlite_env["DJANGO_DEBUG"] = "0"
+        sqlite_env["DB_ENGINE"] = "sqlite"
+        res_sqlite = subprocess.run(
+            [sys.executable, "-c", "import config.settings"],
+            cwd=str(settings.BASE_DIR),
+            env=sqlite_env,
+            capture_output=True,
+            text=True,
+        )
+        self.assertNotEqual(res_sqlite.returncode, 0)
+        self.assertIn("requires DB_ENGINE=postgres", res_sqlite.stderr)
+
+        # 3. Production with wildcard CORS fails startup
+        cors_env = base_env.copy()
+        cors_env["DJANGO_DEBUG"] = "0"
+        cors_env["CORS_ALLOW_ALL_ORIGINS"] = "1"
+        res_cors = subprocess.run(
+            [sys.executable, "-c", "import config.settings"],
+            cwd=str(settings.BASE_DIR),
+            env=cors_env,
+            capture_output=True,
+            text=True,
+        )
+        self.assertNotEqual(res_cors.returncode, 0)
+        self.assertIn("CORS_ALLOW_ALL_ORIGINS cannot be True in production", res_cors.stderr)
+
+    def test_environment_fallback_fails_closed_in_subprocess(self):
+        base_env = os.environ.copy()
+        base_env["PYTHONPATH"] = str(settings.BASE_DIR)
+        base_env.pop("FRAUDLENS_ENV", None)
+        base_env["DJANGO_SECRET_KEY"] = "a" * 50
+        base_env["DJANGO_ALLOWED_HOSTS"] = "fraudlens.example.com"
+        base_env["DB_ENGINE"] = "postgres"
+
+        # 1. Missing FRAUDLENS_ENV with DJANGO_DEBUG=yes fails closed
+        env_yes = base_env.copy()
+        env_yes["DJANGO_DEBUG"] = "yes"
+        res_yes = subprocess.run(
+            [sys.executable, "-c", "import config.settings"],
+            cwd=str(settings.BASE_DIR),
+            env=env_yes,
+            capture_output=True,
+            text=True,
+        )
+        self.assertNotEqual(res_yes.returncode, 0)
+        self.assertIn("DEBUG cannot be True in production", res_yes.stderr)
+
+        # 2. Missing FRAUDLENS_ENV with DJANGO_DEBUG=true fails closed
+        env_true = base_env.copy()
+        env_true["DJANGO_DEBUG"] = "true"
+        res_true = subprocess.run(
+            [sys.executable, "-c", "import config.settings"],
+            cwd=str(settings.BASE_DIR),
+            env=env_true,
+            capture_output=True,
+            text=True,
+        )
+        self.assertNotEqual(res_true.returncode, 0)
+        self.assertIn("DEBUG cannot be True in production", res_true.stderr)
+
+        # 3. Explicit development with SQLite boots successfully
+        dev_env = os.environ.copy()
+        dev_env["PYTHONPATH"] = str(settings.BASE_DIR)
+        dev_env["FRAUDLENS_ENV"] = "development"
+        dev_env["DB_ENGINE"] = "sqlite"
+        dev_env["DJANGO_DEBUG"] = "1"
+        res_dev = subprocess.run(
+            [sys.executable, "-c", "from config import settings; assert settings.DEBUG is True and settings.FRAUDLENS_ENV == 'development'"],
+            cwd=str(settings.BASE_DIR),
+            env=dev_env,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(res_dev.returncode, 0, f"Dev startup failed: {res_dev.stderr}")
+
+    def test_staging_isolated_sqlite_configuration_loads_without_touching_prod(self):
+        env = os.environ.copy()
+        env["PYTHONPATH"] = str(settings.BASE_DIR)
+        env["FRAUDLENS_ENV"] = "staging"
+        cmd = [
+            sys.executable,
+            "-c",
+            "from config import settings_staging; print(str(settings_staging.DATABASES['default']['NAME']))",
+        ]
+        res = subprocess.run(cmd, cwd=str(settings.BASE_DIR), env=env, capture_output=True, text=True)
+        self.assertEqual(res.returncode, 0, f"Staging settings import failed: {res.stderr}")
+        staging_db = res.stdout.strip().lower()
+        self.assertTrue(staging_db.endswith("db_staging.sqlite3"))
+        self.assertNotIn("db.sqlite3", staging_db.replace("db_staging.sqlite3", ""))
+
+    def test_static_root_configured_for_collectstatic(self):
+        self.assertTrue(hasattr(settings, "STATIC_ROOT"), "settings.STATIC_ROOT must be defined")
+        self.assertIsNotNone(settings.STATIC_ROOT, "settings.STATIC_ROOT cannot be None")
+        self.assertEqual(str(settings.STATIC_ROOT), str(settings.BASE_DIR / "staticfiles"))
+
+
+
 
 class DuplicateTransactionReferenceTests(SecurityHardeningBaseTestCase):
     def setUp(self):
@@ -577,3 +895,115 @@ class ScoringAndAlertCompatibilityTests(SecurityHardeningBaseTestCase):
         self.assertIsInstance(data["scoring"]["flagged"], bool)
         self.assertIsInstance(data["scoring"]["reasons"], list)
 
+
+class CorsSecurityAndMiddlewareTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+
+    def test_cors_explicitly_allowed_origin_receives_expected_headers(self):
+        with override_settings(
+            CORS_ALLOWED_ORIGINS=["https://dashboard.fraudlens.com"],
+            CORS_ALLOW_ALL_ORIGINS=False,
+        ):
+            res = self.client.get("/api/health/", HTTP_ORIGIN="https://dashboard.fraudlens.com")
+            self.assertEqual(res.status_code, status.HTTP_200_OK)
+            self.assertEqual(res["Access-Control-Allow-Origin"], "https://dashboard.fraudlens.com")
+            self.assertEqual(res["Access-Control-Allow-Credentials"], "true")
+            self.assertIn("GET", res["Access-Control-Allow-Methods"])
+            self.assertIn("Authorization", res["Access-Control-Allow-Headers"])
+            self.assertTrue(res.has_header("Vary"))
+            self.assertIn("Origin", res["Vary"])
+
+    def test_cors_disallowed_origin_does_not_receive_permission_headers(self):
+        with override_settings(
+            CORS_ALLOWED_ORIGINS=["https://dashboard.fraudlens.com"],
+            CORS_ALLOW_ALL_ORIGINS=False,
+        ):
+            res = self.client.get("/api/health/", HTTP_ORIGIN="https://attacker.example.com")
+            self.assertEqual(res.status_code, status.HTTP_200_OK)
+            self.assertNotIn("Access-Control-Allow-Origin", res)
+            self.assertNotIn("Access-Control-Allow-Credentials", res)
+            self.assertTrue(res.has_header("Vary"))
+            self.assertIn("Origin", res["Vary"])
+
+    def test_cors_vary_origin_present_when_origin_supplied(self):
+        with override_settings(CORS_ALLOWED_ORIGINS=["https://app.fraudlens.com"]):
+            res = self.client.get("/api/health/", HTTP_ORIGIN="https://app.fraudlens.com")
+            self.assertTrue(res.has_header("Vary"))
+            self.assertIn("Origin", res["Vary"])
+
+    def test_cors_wildcard_mode_does_not_issue_credentials(self):
+        with override_settings(
+            CORS_ALLOWED_ORIGINS=[],
+            CORS_ALLOW_ALL_ORIGINS=True,
+        ):
+            res = self.client.get("/api/health/", HTTP_ORIGIN="https://arbitrary-domain.com")
+            self.assertEqual(res.status_code, status.HTTP_200_OK)
+            self.assertEqual(res["Access-Control-Allow-Origin"], "*")
+            self.assertNotIn("Access-Control-Allow-Credentials", res)
+            self.assertTrue(res.has_header("Vary"))
+            self.assertIn("Origin", res["Vary"])
+
+    def test_cors_preflight_handling_for_allowed_origin(self):
+        with override_settings(
+            CORS_ALLOWED_ORIGINS=["https://dashboard.fraudlens.com"],
+            CORS_ALLOW_ALL_ORIGINS=False,
+        ):
+            res = self.client.options(
+                "/api/transactions/",
+                HTTP_ORIGIN="https://dashboard.fraudlens.com",
+                HTTP_ACCESS_CONTROL_REQUEST_METHOD="POST",
+            )
+            self.assertEqual(res.status_code, status.HTTP_200_OK)
+            self.assertEqual(res["Access-Control-Allow-Origin"], "https://dashboard.fraudlens.com")
+            self.assertEqual(res["Access-Control-Allow-Credentials"], "true")
+            self.assertIn("POST", res["Access-Control-Allow-Methods"])
+            self.assertIn("Authorization", res["Access-Control-Allow-Headers"])
+            self.assertTrue(res.has_header("Vary"))
+            self.assertIn("Origin", res["Vary"])
+
+    def test_cors_disallowed_preflight_receives_no_permission_headers(self):
+        with override_settings(
+            CORS_ALLOWED_ORIGINS=["https://dashboard.fraudlens.com"],
+            CORS_ALLOW_ALL_ORIGINS=False,
+        ):
+            res = self.client.options(
+                "/api/transactions/",
+                HTTP_ORIGIN="https://malicious.example.com",
+                HTTP_ACCESS_CONTROL_REQUEST_METHOD="POST",
+            )
+            self.assertEqual(res.status_code, status.HTTP_200_OK)
+            self.assertNotIn("Access-Control-Allow-Origin", res)
+            self.assertNotIn("Access-Control-Allow-Credentials", res)
+            self.assertNotIn("Access-Control-Allow-Methods", res)
+            self.assertTrue(res.has_header("Vary"))
+            self.assertIn("Origin", res["Vary"])
+
+    def test_cors_vary_origin_preserves_existing_vary_headers(self):
+        from config.middleware import SimpleCorsMiddleware
+        from django.http import HttpResponse
+
+        def dummy_get_response(request):
+            response = HttpResponse("ok")
+            response["Vary"] = "Accept-Encoding"
+            return response
+
+        middleware = SimpleCorsMiddleware(dummy_get_response)
+        mock_request = self.client.get("/api/health/", HTTP_ORIGIN="https://dashboard.fraudlens.com").wsgi_request
+        with override_settings(CORS_ALLOWED_ORIGINS=["https://dashboard.fraudlens.com"]):
+            response = middleware(mock_request)
+            self.assertTrue(response.has_header("Vary"))
+            vary_parts = [part.strip() for part in response["Vary"].split(",")]
+            self.assertIn("Accept-Encoding", vary_parts)
+            self.assertIn("Origin", vary_parts)
+
+    def test_cors_native_client_without_origin_header_is_unmodified(self):
+        with override_settings(
+            CORS_ALLOWED_ORIGINS=["https://dashboard.fraudlens.com"],
+            CORS_ALLOW_ALL_ORIGINS=False,
+        ):
+            res = self.client.get("/api/health/")
+            self.assertEqual(res.status_code, status.HTTP_200_OK)
+            self.assertNotIn("Access-Control-Allow-Origin", res)
+            self.assertNotIn("Access-Control-Allow-Credentials", res)
+            self.assertFalse(res.has_header("Vary"))

@@ -1,6 +1,7 @@
 """Security and CORS Middleware for FraudLens."""
 from django.conf import settings
 from django.http import HttpResponse
+from django.utils.cache import patch_vary_headers
 
 
 class SimpleCorsMiddleware:
@@ -31,11 +32,20 @@ class SimpleCorsMiddleware:
         allowed_origins = getattr(settings, "CORS_ALLOWED_ORIGINS", [])
         allow_all = getattr(settings, "CORS_ALLOW_ALL_ORIGINS", False)
 
-        if allow_all or origin in allowed_origins:
+        patch_vary_headers(response, ("Origin",))
+
+        if origin in allowed_origins:
             response["Access-Control-Allow-Origin"] = origin
             response["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
             response["Access-Control-Allow-Headers"] = (
                 "Accept, Authorization, Content-Type, Origin, X-CSRFToken, X-Requested-With"
             )
             response["Access-Control-Allow-Credentials"] = "true"
+            response["Access-Control-Max-Age"] = "86400"
+        elif allow_all:
+            response["Access-Control-Allow-Origin"] = "*"
+            response["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+            response["Access-Control-Allow-Headers"] = (
+                "Accept, Authorization, Content-Type, Origin, X-CSRFToken, X-Requested-With"
+            )
             response["Access-Control-Max-Age"] = "86400"
