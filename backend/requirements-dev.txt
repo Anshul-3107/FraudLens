@@ -1,0 +1,9 @@
+-r requirements.txt
+
+# Development, dataset download, ML training, and offline explanation tooling
+jupyter
+kagglehub
+matplotlib
+shap
+pyarrow
+pip-audit

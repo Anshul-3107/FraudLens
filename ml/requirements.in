@@ -1,0 +1,18 @@
+# FraudLens ML Development, Training, and Offline Analysis Dependencies
+# Target: Python 3.11
+
+# Core ML dependencies pinned to match production runtime:
+joblib==1.6.0
+numpy==2.4.6
+pandas==3.0.6
+scikit-learn==1.9.1
+scipy==1.17.1
+xgboost==3.2.0
+tzdata==2026.5; sys_platform == 'win32'
+
+# Development, dataset download, ML training, and offline explanation tooling:
+jupyter
+kagglehub
+matplotlib
+shap
+pyarrow
