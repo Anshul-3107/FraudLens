@@ -213,23 +213,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
             const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'FraudLens Overview',
-                  style: TextStyle(fontSize: 16),
-                ),
-                if (authProvider.user != null)
-                  Text(
-                    'Analyst: ${authProvider.user!.username}${authProvider.user!.isStaff ? " (Staff)" : ""}',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: colors.textMuted,
-                      fontWeight: FontWeight.normal,
-                    ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'FraudLens Overview',
+                    style: TextStyle(fontSize: 16),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-              ],
+                  if (authProvider.user != null)
+                    Text(
+                      'Analyst: ${authProvider.user!.username}${authProvider.user!.isStaff ? " (Staff)" : ""}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: colors.textMuted,
+                        fontWeight: FontWeight.normal,
+                      ),
+                    ),
+                ],
+              ),
             ),
           ],
         ),
@@ -390,12 +397,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           width: 1,
                         ),
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final isNarrow = constraints.maxWidth < 320;
+                          if (isNarrow) {
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 Text(
                                   'Live ML Transaction Scoring',
@@ -413,24 +420,69 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     fontSize: 12,
                                   ),
                                 ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          ElevatedButton.icon(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      const CreateTransactionScreen(),
+                                const SizedBox(height: 12),
+                                ElevatedButton.icon(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            const CreateTransactionScreen(),
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(
+                                    Icons.bolt_rounded,
+                                    size: 16,
+                                  ),
+                                  label: const Text('Score Transaction'),
                                 ),
-                              );
-                            },
-                            icon: const Icon(Icons.bolt_rounded, size: 16),
-                            label: const Text('Score Transaction'),
-                          ),
-                        ],
+                              ],
+                            );
+                          }
+                          return Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Live ML Transaction Scoring',
+                                      style: TextStyle(
+                                        color: colors.textPrimary,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Test real-time Isolation Forest + XGBoost inference',
+                                      style: TextStyle(
+                                        color: colors.textMuted,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              ElevatedButton.icon(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          const CreateTransactionScreen(),
+                                    ),
+                                  );
+                                },
+                                icon: const Icon(Icons.bolt_rounded, size: 16),
+                                label: const Text('Score Transaction'),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                     ),
 
@@ -453,14 +505,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                'Monthly Spending Activity',
-                                style: TextStyle(
-                                  color: colors.textPrimary,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
+                              Expanded(
+                                child: Text(
+                                  'Monthly Spending Activity',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: colors.textPrimary,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
                               ),
+                              const SizedBox(width: 8),
                               Text(
                                 'USD Volume',
                                 style: TextStyle(

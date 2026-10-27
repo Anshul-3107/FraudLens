@@ -9,13 +9,23 @@ class ApiConfig {
     'API_BASE_URL',
   );
 
+  // Build-time flag to select Android emulator loopback (10.0.2.2):
+  // e.g. flutter run --dart-define=USE_ANDROID_EMULATOR=true
+  static const bool _useAndroidEmulator = bool.fromEnvironment(
+    'USE_ANDROID_EMULATOR',
+    defaultValue: false,
+  );
+
   static String get defaultBaseUrl {
     if (_dartDefineBaseUrl.isNotEmpty) {
       return _dartDefineBaseUrl;
     }
-    // Android emulator loopback vs standard host localhost
+    // Android emulator loopback vs physical Android device over USB reverse forwarding
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://10.0.2.2:8000';
+      if (_useAndroidEmulator) {
+        return 'http://10.0.2.2:8000';
+      }
+      return 'http://127.0.0.1:8000';
     }
     return 'http://127.0.0.1:8000';
   }
@@ -32,7 +42,14 @@ class ApiConfig {
   static Future<void> initialize() async {
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString(_kPrefBaseUrlKey);
-    if (saved != null && saved.trim().isNotEmpty) {
+    // If a physical Android device had previously saved the obsolete 10.0.2.2 default,
+    // clear it so it transparently updates to the USB-forwarded 127.0.0.1 endpoint.
+    if (saved != null &&
+        saved.trim() == 'http://10.0.2.2:8000' &&
+        !_useAndroidEmulator) {
+      await prefs.remove(_kPrefBaseUrlKey);
+      _activeBaseUrl = defaultBaseUrl;
+    } else if (saved != null && saved.trim().isNotEmpty) {
       _activeBaseUrl = saved.trim();
     } else {
       _activeBaseUrl = defaultBaseUrl;

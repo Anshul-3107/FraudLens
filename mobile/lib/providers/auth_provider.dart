@@ -10,6 +10,8 @@ class AuthProvider extends ChangeNotifier {
   final AuthService _authService;
 
   AuthStatus _status = AuthStatus.initial;
+  bool _isInitializing = true;
+  bool _isLoading = false;
   UserMe? _user;
   String? _token;
   String? _errorMessage;
@@ -20,21 +22,24 @@ class AuthProvider extends ChangeNotifier {
   }
 
   AuthStatus get status => _status;
+  bool get isInitializing => _isInitializing;
   UserMe? get user => _user;
   String? get token => _token;
   String? get errorMessage => _errorMessage;
   bool get isAuthenticated =>
       _status == AuthStatus.authenticated && _token != null;
-  bool get isLoading => _status == AuthStatus.loading;
+  bool get isLoading => _isLoading;
 
   void _handleUnauthorized() {
     _status = AuthStatus.unauthenticated;
     _token = null;
     _user = null;
+    _isLoading = false;
     notifyListeners();
   }
 
   Future<void> initialize() async {
+    _isInitializing = true;
     _status = AuthStatus.loading;
     notifyListeners();
 
@@ -59,7 +64,7 @@ class AuthProvider extends ChangeNotifier {
             _user = null;
             _status = AuthStatus.unauthenticated;
           } else {
-            // Offline or server temporarily down, if we had cached user, keep authenticated
+            // Offline or server temporarily unreachable; keep authenticated if cached user exists
             if (_user != null) {
               _status = AuthStatus.authenticated;
             } else {
@@ -72,12 +77,14 @@ class AuthProvider extends ChangeNotifier {
       }
     } catch (_) {
       _status = AuthStatus.unauthenticated;
+    } finally {
+      _isInitializing = false;
+      notifyListeners();
     }
-    notifyListeners();
   }
 
   Future<bool> login(String username, String password) async {
-    _status = AuthStatus.loading;
+    _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
@@ -92,11 +99,13 @@ class AuthProvider extends ChangeNotifier {
       final me = await _authService.getMe();
       _user = me;
       _status = AuthStatus.authenticated;
+      _isLoading = false;
       notifyListeners();
       return true;
     } catch (e) {
       _status = AuthStatus.error;
       _errorMessage = e.toString();
+      _isLoading = false;
       notifyListeners();
       return false;
     }
@@ -107,7 +116,7 @@ class AuthProvider extends ChangeNotifier {
     String password, {
     String? email,
   }) async {
-    _status = AuthStatus.loading;
+    _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
@@ -123,11 +132,13 @@ class AuthProvider extends ChangeNotifier {
       final me = await _authService.getMe();
       _user = me;
       _status = AuthStatus.authenticated;
+      _isLoading = false;
       notifyListeners();
       return true;
     } catch (e) {
       _status = AuthStatus.error;
       _errorMessage = e.toString();
+      _isLoading = false;
       notifyListeners();
       return false;
     }
@@ -142,13 +153,14 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
-    _status = AuthStatus.loading;
+    _isLoading = true;
     notifyListeners();
 
     await _authService.logout();
     _token = null;
     _user = null;
     _status = AuthStatus.unauthenticated;
+    _isLoading = false;
     notifyListeners();
   }
 }

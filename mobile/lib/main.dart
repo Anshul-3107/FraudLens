@@ -49,20 +49,15 @@ class FraudLensApp extends StatelessWidget {
       themeMode: themeProvider.themeMode,
       home: Consumer<AuthProvider>(
         builder: (context, authProvider, _) {
-          switch (authProvider.status) {
-            case AuthStatus.loading:
-            case AuthStatus.initial:
-              return const Scaffold(
-                body: FintechLoadingIndicator(
-                  label: 'Initializing FraudLens...',
-                ),
-              );
-            case AuthStatus.authenticated:
-              return const AppShell();
-            case AuthStatus.unauthenticated:
-            case AuthStatus.error:
-              return const LoginScreen();
+          if (authProvider.isInitializing) {
+            return const Scaffold(
+              body: FintechLoadingIndicator(label: 'Initializing FraudLens...'),
+            );
           }
+          if (authProvider.isAuthenticated) {
+            return const AppShell();
+          }
+          return const LoginScreen();
         },
       ),
     );

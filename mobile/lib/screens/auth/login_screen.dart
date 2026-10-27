@@ -74,7 +74,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     ActionChip(
                       label: const Text(
-                        'Localhost (127.0.0.1)',
+                        'USB / Local (127.0.0.1)',
                         style: TextStyle(fontSize: 11),
                       ),
                       onPressed: () => setDialogState(
@@ -83,7 +83,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     ActionChip(
                       label: const Text(
-                        'Android (10.0.2.2)',
+                        'Emulator (10.0.2.2)',
                         style: TextStyle(fontSize: 11),
                       ),
                       onPressed: () => setDialogState(

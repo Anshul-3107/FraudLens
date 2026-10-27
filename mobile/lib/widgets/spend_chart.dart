@@ -60,7 +60,7 @@ class MonthlySpendChart extends StatelessWidget {
             leftTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
-                reservedSize: 38,
+                reservedSize: 42,
                 interval: maxY / 4 > 0 ? maxY / 4 : 25,
                 getTitlesWidget: (value, meta) {
                   if (value == 0) return const SizedBox.shrink();
@@ -189,15 +189,20 @@ class CategorySpendBreakdown extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    c.formattedCategory,
-                    style: TextStyle(
-                      color: colors.textPrimary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: -0.1,
+                  Expanded(
+                    child: Text(
+                      c.formattedCategory,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: colors.textPrimary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -0.1,
+                      ),
                     ),
                   ),
+                  const SizedBox(width: 8),
                   Text(
                     '${currencyFormat.format(c.total)} (${c.count} txns)',
                     style: TextStyle(

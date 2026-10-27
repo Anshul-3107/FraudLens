@@ -7,3 +7,8 @@ ml/artifacts/*.joblib
 backend/db.sqlite3
 .ipynb_checkpoints/
 .env
+
+# IDE / Editor
+.idea/
+*.iml
+.vscode/

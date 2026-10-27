@@ -143,8 +143,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     style: TextStyle(color: colors.textSecondary, fontSize: 12),
                   ),
                   const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 8,
+                    runSpacing: 6,
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -176,7 +178,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 8,
@@ -226,13 +227,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         color: colors.textPrimary,
                       ),
                       const SizedBox(width: 8),
-                      Text(
-                        'Appearance & Theme',
-                        style: TextStyle(
-                          color: colors.textPrimary,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -0.1,
+                      Expanded(
+                        child: Text(
+                          'Appearance & Theme',
+                          style: TextStyle(
+                            color: colors.textPrimary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.1,
+                          ),
                         ),
                       ),
                     ],
@@ -316,13 +319,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         color: colors.textPrimary,
                       ),
                       const SizedBox(width: 8),
-                      Text(
-                        'Backend Endpoint Configuration',
-                        style: TextStyle(
-                          color: colors.textPrimary,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -0.1,
+                      Expanded(
+                        child: Text(
+                          'Backend Endpoint Configuration',
+                          style: TextStyle(
+                            color: colors.textPrimary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.1,
+                          ),
                         ),
                       ),
                     ],
@@ -347,7 +352,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     children: [
                       ActionChip(
                         label: const Text(
-                          'Localhost (127.0.0.1:8000)',
+                          'USB / Local (127.0.0.1:8000)',
                           style: TextStyle(fontSize: 11),
                         ),
                         onPressed: () => setState(
@@ -356,7 +361,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       ActionChip(
                         label: const Text(
-                          'Android (10.0.2.2:8000)',
+                          'Emulator (10.0.2.2:8000)',
                           style: TextStyle(fontSize: 11),
                         ),
                         onPressed: () => setState(

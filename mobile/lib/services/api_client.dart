@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -18,6 +19,8 @@ class ApiException implements Exception {
 class ApiClient {
   static final ApiClient instance = ApiClient._internal();
   ApiClient._internal();
+
+  static const Duration defaultTimeout = Duration(seconds: 15);
 
   String? _token;
   VoidCallback? onUnauthorized;
@@ -55,16 +58,43 @@ class ApiClient {
     }
 
     try {
-      final response = await http.get(uri, headers: _buildHeaders());
+      final response = await http
+          .get(uri, headers: _buildHeaders())
+          .timeout(defaultTimeout);
       return _handleResponse(response);
+    } on TimeoutException {
+      if (kDebugMode) {
+        debugPrint(
+          '[ApiClient] Request timeout (${defaultTimeout.inSeconds}s) GET $url',
+        );
+      }
+      throw ApiException(
+        statusCode: 408,
+        message:
+            'Request timed out after ${defaultTimeout.inSeconds}s. Please check if the server is running at ${uri.host}:${uri.port}.',
+      );
     } on SocketException catch (e) {
+      if (kDebugMode) {
+        debugPrint('[ApiClient] SocketException GET $url: ${e.message}');
+      }
       throw ApiException(
         statusCode: 0,
         message:
-            'Cannot reach server. Please check your network or server URL. (${e.message})',
+            'Cannot reach server at ${uri.host}:${uri.port}. Please check your connection or server URL. (${e.message})',
+      );
+    } on http.ClientException catch (e) {
+      if (kDebugMode) {
+        debugPrint('[ApiClient] ClientException GET $url: ${e.message}');
+      }
+      throw ApiException(
+        statusCode: 0,
+        message: 'Network client error: ${e.message}',
       );
     } catch (e) {
       if (e is ApiException) rethrow;
+      if (kDebugMode) {
+        debugPrint('[ApiClient] Unexpected error GET $url: $e');
+      }
       throw ApiException(statusCode: 0, message: 'Network error: $e');
     }
   }
@@ -72,20 +102,47 @@ class ApiClient {
   Future<dynamic> post(String url, {dynamic body}) async {
     final uri = Uri.parse(url);
     try {
-      final response = await http.post(
-        uri,
-        headers: _buildHeaders(isJson: true),
-        body: body != null ? jsonEncode(body) : null,
-      );
+      final response = await http
+          .post(
+            uri,
+            headers: _buildHeaders(isJson: true),
+            body: body != null ? jsonEncode(body) : null,
+          )
+          .timeout(defaultTimeout);
       return _handleResponse(response);
+    } on TimeoutException {
+      if (kDebugMode) {
+        debugPrint(
+          '[ApiClient] Request timeout (${defaultTimeout.inSeconds}s) POST $url',
+        );
+      }
+      throw ApiException(
+        statusCode: 408,
+        message:
+            'Request timed out after ${defaultTimeout.inSeconds}s. Please check if the server is running at ${uri.host}:${uri.port}.',
+      );
     } on SocketException catch (e) {
+      if (kDebugMode) {
+        debugPrint('[ApiClient] SocketException POST $url: ${e.message}');
+      }
       throw ApiException(
         statusCode: 0,
         message:
-            'Cannot reach server. Please check your network or server URL. (${e.message})',
+            'Cannot reach server at ${uri.host}:${uri.port}. Please check your connection or server URL. (${e.message})',
+      );
+    } on http.ClientException catch (e) {
+      if (kDebugMode) {
+        debugPrint('[ApiClient] ClientException POST $url: ${e.message}');
+      }
+      throw ApiException(
+        statusCode: 0,
+        message: 'Network client error: ${e.message}',
       );
     } catch (e) {
       if (e is ApiException) rethrow;
+      if (kDebugMode) {
+        debugPrint('[ApiClient] Unexpected error POST $url: $e');
+      }
       throw ApiException(statusCode: 0, message: 'Network error: $e');
     }
   }
@@ -138,7 +195,14 @@ class ApiClient {
         }
       }
     } else if (decodedBody is String && decodedBody.isNotEmpty) {
-      errorMessage = decodedBody;
+      final trimmed = decodedBody.trimLeft();
+      if (trimmed.startsWith('<')) {
+        // Raw HTML returned by server (e.g. 500 error or 400 DisallowedHost)
+        errorMessage =
+            'Server error (${response.statusCode}). Please check backend status.';
+      } else {
+        errorMessage = decodedBody;
+      }
     }
 
     throw ApiException(
