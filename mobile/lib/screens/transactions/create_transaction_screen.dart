@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_theme.dart';
 import '../../models/card.dart';
 import '../../models/transaction.dart';
 import '../../providers/card_provider.dart';
+import '../../providers/currency_provider.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../providers/transaction_provider.dart';
 import '../../widgets/risk_badge.dart';
@@ -30,7 +30,7 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
   final _latController = TextEditingController();
   final _longController = TextEditingController();
 
-  DateTime _occurredAt = DateTime.now();
+  final DateTime _occurredAt = DateTime.now();
   bool _submitting = false;
   TransactionCreateResponse? _result;
 
@@ -119,7 +119,7 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
     final cardProvider = context.watch<CardProvider>();
-    final dateFormat = DateFormat('yyyy-MM-dd HH:mm');
+    final currencyProvider = context.watch<CurrencyProvider>();
 
     return Scaffold(
       backgroundColor: colors.background,
@@ -198,8 +198,11 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    Wrap(
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 4,
                       children: [
                         Text(
                           _result!.scoring.flagged
@@ -302,11 +305,16 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
-                      decoration: const InputDecoration(
-                        labelText: 'Amount (USD)',
-                        hintText: '950.00',
-                        prefixIcon: Icon(Icons.attach_money_rounded, size: 20),
+                      decoration: InputDecoration(
+                        labelText:
+                            'Amount (USD base • ${currencyProvider.activeCurrency})',
+                        hintText: '85.50',
+                        prefixIcon: const Icon(
+                          Icons.attach_money_rounded,
+                          size: 20,
+                        ),
                       ),
+                      onChanged: (_) => setState(() {}),
                       validator: (val) {
                         if (val == null || val.trim().isEmpty) {
                           return 'Amount required';
@@ -318,6 +326,24 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
                         return null;
                       },
                     ),
+                    if (currencyProvider.isConvertedFromUsd) ...[
+                      const SizedBox(height: 4),
+                      Builder(
+                        builder: (context) {
+                          final val =
+                              double.tryParse(_amountController.text.trim()) ??
+                              0.0;
+                          return Text(
+                            '≈ ${currencyProvider.format(val)} (${currencyProvider.activeCurrency}) at 1 USD = ${currencyProvider.activeRateFromUsd.toStringAsFixed(2)} ${currencyProvider.activeCurrency}',
+                            style: TextStyle(
+                              color: colors.textMuted,
+                              fontSize: 11.5,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          );
+                        },
+                      ),
+                    ],
                     const SizedBox(height: 14),
 
                     // Merchant
@@ -355,117 +381,96 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
                     ),
                     const SizedBox(height: 14),
 
+                    // Trans Ref (Optional)
+                    TextFormField(
+                      controller: _transRefController,
+                      decoration: const InputDecoration(
+                        labelText: 'Transaction Reference (Optional)',
+                        hintText: 'Auto-generated if blank',
+                        prefixIcon: Icon(Icons.tag_rounded, size: 20),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Geo Coordinates
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _latController,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                              signed: true,
+                            ),
+                            decoration: const InputDecoration(
+                              labelText: 'Latitude',
+                              hintText: '36.16',
+                              prefixIcon: Icon(Icons.place_outlined, size: 18),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: TextFormField(
+                            controller: _longController,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                              signed: true,
+                            ),
+                            decoration: const InputDecoration(
+                              labelText: 'Longitude',
+                              hintText: '-86.78',
+                              prefixIcon: Icon(Icons.place_outlined, size: 18),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+
                     // Source
                     DropdownButtonFormField<String>(
                       initialValue: _source,
                       decoration: const InputDecoration(
-                        labelText: 'Transaction Ingestion Source',
+                        labelText: 'Ingestion Channel',
                         prefixIcon: Icon(Icons.input_rounded, size: 20),
                       ),
                       items: const [
                         DropdownMenuItem(
                           value: 'upload',
-                          child: Text('User Upload'),
+                          child: Text('Simulated Real-time Transaction'),
                         ),
                         DropdownMenuItem(
-                          value: 'aa_sandbox',
-                          child: Text('Account Aggregator Sandbox'),
+                          value: 'batch',
+                          child: Text('Batch Ingestion'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'manual',
+                          child: Text('Manual Analyst Entry'),
                         ),
                       ],
                       onChanged: (val) {
                         if (val != null) setState(() => _source = val);
                       },
                     ),
-                    const SizedBox(height: 14),
-
-                    // Date & Time Picker Tile
-                    ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        side: BorderSide(color: colors.borderSubtle),
-                      ),
-                      leading: Icon(
-                        Icons.calendar_month_rounded,
-                        color: colors.primary,
-                      ),
-                      title: Text(
-                        'Transaction Timestamp',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: colors.textSecondary,
-                        ),
-                      ),
-                      subtitle: Text(
-                        dateFormat.format(_occurredAt),
-                        style: TextStyle(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w600,
-                          color: colors.textPrimary,
-                        ),
-                      ),
-                      trailing: const Icon(
-                        Icons.edit_calendar_rounded,
-                        size: 18,
-                      ),
-                      onTap: () async {
-                        final pickedDate = await showDatePicker(
-                          context: context,
-                          initialDate: _occurredAt,
-                          firstDate: DateTime(2019),
-                          lastDate: DateTime.now().add(const Duration(days: 1)),
-                        );
-                        if (pickedDate == null || !context.mounted) return;
-                        final pickedTime = await showTimePicker(
-                          context: context,
-                          initialTime: TimeOfDay.fromDateTime(_occurredAt),
-                        );
-                        if (pickedTime != null && context.mounted) {
-                          setState(() {
-                            _occurredAt = DateTime(
-                              pickedDate.year,
-                              pickedDate.month,
-                              pickedDate.day,
-                              pickedTime.hour,
-                              pickedTime.minute,
-                            );
-                          });
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 14),
-
-                    // Optional Reference ID
-                    TextFormField(
-                      controller: _transRefController,
-                      decoration: const InputDecoration(
-                        labelText: 'Transaction Reference ID (Optional)',
-                        hintText: 'TXN-CUSTOM-001',
-                        prefixIcon: Icon(Icons.tag_rounded, size: 20),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
 
                     ElevatedButton.icon(
                       onPressed: _submitting ? null : _submitTransaction,
                       icon: _submitting
                           ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  Colors.white,
-                                ),
-                              ),
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Icon(Icons.bolt_rounded, size: 18),
                       label: Text(
                         _submitting
-                            ? 'Running ML Inference...'
-                            : 'Score and Ingest Transaction',
+                            ? 'Evaluating ML Model...'
+                            : 'Score Transaction with ML',
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                     ),
                   ],

@@ -4,8 +4,10 @@ import 'package:provider/provider.dart';
 import '../../config/api_config.dart';
 import '../../config/app_theme.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/currency_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../services/auth_service.dart';
+import '../../services/currency_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -81,6 +83,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final colors = AppColors.of(context);
     final authProvider = context.watch<AuthProvider>();
     final themeProvider = context.watch<ThemeProvider>();
+    final currencyProvider = context.watch<CurrencyProvider>();
     final user = authProvider.user;
 
     final isEffectiveDark = themeProvider.isEffectiveDark(context);
@@ -300,6 +303,159 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             const SizedBox(height: 14),
 
+            // Regional Currency & Conversion Card
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: colors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: colors.border, width: 1),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.currency_exchange_rounded,
+                        size: 18,
+                        color: colors.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Regional Currency & Conversion',
+                          style: TextStyle(
+                            color: colors.textPrimary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.1,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'FraudLens natively preserves USD ledger amounts while automatically formatting and converting into your regional currency.',
+                    style: TextStyle(fontSize: 12, color: colors.textMuted),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Mode selection: Auto vs Manual
+                  SegmentedButton<CurrencyMode>(
+                    segments: [
+                      ButtonSegment(
+                        value: CurrencyMode.auto,
+                        icon: const Icon(Icons.auto_awesome_rounded, size: 15),
+                        label: Text(
+                          'Auto (${currencyProvider.detectedCurrency})',
+                        ),
+                      ),
+                      const ButtonSegment(
+                        value: CurrencyMode.manual,
+                        icon: Icon(Icons.tune_rounded, size: 15),
+                        label: Text('Manual Override'),
+                      ),
+                    ],
+                    selected: {currencyProvider.mode},
+                    onSelectionChanged: (newSelection) {
+                      if (newSelection.first == CurrencyMode.auto) {
+                        currencyProvider.setAutoMode();
+                      } else {
+                        currencyProvider.setManualCurrency(
+                          currencyProvider.activeCurrency,
+                        );
+                      }
+                    },
+                    style: ButtonStyle(
+                      textStyle: WidgetStateProperty.all(
+                        const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
+
+                  if (!currencyProvider.isAutoMode) ...[
+                    const SizedBox(height: 14),
+                    Text(
+                      'Select Display Currency:',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colors.textSecondary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      children: CurrencyService.supportedCurrencies.values.map((
+                        info,
+                      ) {
+                        final isSelected =
+                            currencyProvider.activeCurrency == info.code;
+                        return ChoiceChip(
+                          label: Text(
+                            '${info.flagEmoji} ${info.code} (${info.symbol})',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: isSelected
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                            ),
+                          ),
+                          selected: isSelected,
+                          onSelected: (_) =>
+                              currencyProvider.setManualCurrency(info.code),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: colors.surfaceSubtle,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: colors.borderSubtle),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline_rounded,
+                          size: 15,
+                          color: colors.primary,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            currencyProvider.isConvertedFromUsd
+                                ? 'Active Rate: 1 USD = ${currencyProvider.activeRateFromUsd.toStringAsFixed(2)} ${currencyProvider.activeCurrency} (Live conversion applied)'
+                                : 'Active Currency: USD (Base currency, 1:1)',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: colors.textSecondary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 14),
+
             // Connection Configuration Card
             Container(
               padding: const EdgeInsets.all(18),
@@ -334,7 +490,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Configure host address for Django REST backend. Supports Android emulator 10.0.2.2 or desktop localhost.',
+                    'Configure host address for Django REST backend. Supports Android physical device 127.0.0.1 (via USB reverse forwarding) or emulator 10.0.2.2.',
                     style: TextStyle(fontSize: 12, color: colors.textMuted),
                   ),
                   const SizedBox(height: 14),
@@ -349,6 +505,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 10),
                   Wrap(
                     spacing: 8,
+                    runSpacing: 6,
                     children: [
                       ActionChip(
                         label: const Text(

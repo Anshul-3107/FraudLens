@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_theme.dart';
+import '../../providers/currency_provider.dart';
 import '../../providers/investigation_provider.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/error_view.dart';
@@ -33,10 +34,7 @@ class _InvestigationsListScreenState extends State<InvestigationsListScreen> {
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
     final invProvider = context.watch<InvestigationProvider>();
-    final currencyFormat = NumberFormat.currency(
-      symbol: '\$',
-      decimalDigits: 2,
-    );
+    final currencyProvider = context.watch<CurrencyProvider>();
     final dateFormat = DateFormat('MMM d, yyyy • h:mm a');
     final totalPages = (invProvider.count / 50).ceil();
 
@@ -61,12 +59,16 @@ class _InvestigationsListScreenState extends State<InvestigationsListScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  '${NumberFormat.decimalPattern().format(invProvider.count)} investigations logged',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: colors.textSecondary,
-                    fontWeight: FontWeight.w500,
+                Expanded(
+                  child: Text(
+                    '${NumberFormat.decimalPattern().format(invProvider.count)} investigations logged',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: colors.textSecondary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 if (totalPages > 1)
@@ -111,7 +113,7 @@ class _InvestigationsListScreenState extends State<InvestigationsListScreen> {
                         final inv = invProvider.investigations[index];
 
                         return Container(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
                             color: colors.surface,
                             borderRadius: BorderRadius.circular(12),
@@ -123,9 +125,11 @@ class _InvestigationsListScreenState extends State<InvestigationsListScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
+                              Wrap(
+                                alignment: WrapAlignment.spaceBetween,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                spacing: 8,
+                                runSpacing: 4,
                                 children: [
                                   VerdictBadge(verdict: inv.verdict),
                                   Text(
@@ -157,43 +161,55 @@ class _InvestigationsListScreenState extends State<InvestigationsListScreen> {
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
-                                  Text(
-                                    currencyFormat.format(inv.amount),
-                                    style: TextStyle(
-                                      color: colors.textPrimary,
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w700,
+                                  const SizedBox(width: 8),
+                                  FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    alignment: Alignment.centerRight,
+                                    child: Text(
+                                      currencyProvider.format(inv.amount),
+                                      style: TextStyle(
+                                        color: colors.textPrimary,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                      maxLines: 1,
                                     ),
                                   ),
                                 ],
                               ),
                               const SizedBox(height: 6),
 
-                              // Analyst info and date
-                              Row(
+                              // Analyst info and date (using Wrap to prevent horizontal overflow)
+                              Wrap(
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                spacing: 6,
+                                runSpacing: 4,
                                 children: [
-                                  Icon(
-                                    Icons.person_pin_rounded,
-                                    size: 14,
-                                    color: colors.primary,
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.person_pin_rounded,
+                                        size: 14,
+                                        color: colors.primary,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        inv.analystName != null
+                                            ? 'Analyst: ${inv.analystName}'
+                                            : 'System review',
+                                        style: TextStyle(
+                                          color: colors.textSecondary,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    inv.analystName != null
-                                        ? 'Analyst: ${inv.analystName}'
-                                        : 'System review',
-                                    style: TextStyle(
-                                      color: colors.textSecondary,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
                                   Text(
                                     '•',
                                     style: TextStyle(color: colors.textMuted),
                                   ),
-                                  const SizedBox(width: 8),
                                   Text(
                                     dateFormat.format(inv.createdAt),
                                     style: TextStyle(
@@ -238,7 +254,7 @@ class _InvestigationsListScreenState extends State<InvestigationsListScreen> {
           // Pagination Bar at Bottom
           if (totalPages > 1)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: colors.surface,
                 border: Border(
@@ -252,23 +268,45 @@ class _InvestigationsListScreenState extends State<InvestigationsListScreen> {
                     onPressed: invProvider.hasPrevious && !invProvider.isLoading
                         ? () => invProvider.previousPage()
                         : null,
-                    icon: const Icon(Icons.chevron_left_rounded, size: 18),
-                    label: const Text('Previous'),
+                    icon: const Icon(Icons.chevron_left_rounded, size: 16),
+                    label: const Text('Prev'),
+                    style: OutlinedButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                    ),
                   ),
-                  Text(
-                    'Page ${invProvider.page} of $totalPages',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: colors.textPrimary,
-                      fontWeight: FontWeight.w600,
+                  Flexible(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Text(
+                        'Page ${invProvider.page} of $totalPages',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: colors.textPrimary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                      ),
                     ),
                   ),
                   OutlinedButton.icon(
                     onPressed: invProvider.hasNext && !invProvider.isLoading
                         ? () => invProvider.nextPage()
                         : null,
-                    icon: const Icon(Icons.chevron_right_rounded, size: 18),
+                    icon: const Icon(Icons.chevron_right_rounded, size: 16),
                     label: const Text('Next'),
+                    style: OutlinedButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                    ),
                   ),
                 ],
               ),

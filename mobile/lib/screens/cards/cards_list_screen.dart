@@ -161,8 +161,10 @@ class _CardsListScreenState extends State<CardsListScreen> {
                         const SizedBox(height: 16),
                         Divider(height: 1, color: colors.borderSubtle),
                         const SizedBox(height: 12),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
+                        Wrap(
+                          alignment: WrapAlignment.end,
+                          spacing: 8,
+                          runSpacing: 6,
                           children: [
                             OutlinedButton.icon(
                               onPressed: () {
@@ -188,7 +190,6 @@ class _CardsListScreenState extends State<CardsListScreen> {
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 8),
                             FilledButton.icon(
                               onPressed: () {
                                 context.read<TransactionProvider>().setCard(

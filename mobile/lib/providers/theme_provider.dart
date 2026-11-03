@@ -15,6 +15,10 @@ class ThemeProvider extends ChangeNotifier {
     _loadThemeMode();
   }
 
+  Future<void> initialize() async {
+    await _loadThemeMode();
+  }
+
   Future<void> _loadThemeMode() async {
     try {
       final prefs = await SharedPreferences.getInstance();

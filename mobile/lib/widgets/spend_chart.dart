@@ -1,9 +1,10 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 
 import '../config/app_theme.dart';
 import '../models/summary.dart';
+import '../providers/currency_provider.dart';
 
 class MonthlySpendChart extends StatelessWidget {
   final List<MonthlySpend> monthlyData;
@@ -13,6 +14,7 @@ class MonthlySpendChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
+    final currencyProvider = context.watch<CurrencyProvider>();
 
     if (monthlyData.isEmpty) {
       return Container(
@@ -30,17 +32,18 @@ class MonthlySpendChart extends StatelessWidget {
         : monthlyData;
 
     double maxSpend = 100.0;
+    final convertedTotals = <double>[];
     for (final m in data) {
-      if (m.total > maxSpend) maxSpend = m.total;
+      final converted = currencyProvider.convertFromUsd(m.total);
+      convertedTotals.add(converted);
+      if (converted > maxSpend) maxSpend = converted;
     }
     final maxY = maxSpend * 1.15;
 
     final spots = <FlSpot>[];
     for (int i = 0; i < data.length; i++) {
-      spots.add(FlSpot(i.toDouble(), data[i].total));
+      spots.add(FlSpot(i.toDouble(), convertedTotals[i]));
     }
-
-    final currencyFormat = NumberFormat.compactSimpleCurrency();
 
     return SizedBox(
       height: 180,
@@ -60,12 +63,12 @@ class MonthlySpendChart extends StatelessWidget {
             leftTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
-                reservedSize: 42,
+                reservedSize: 48,
                 interval: maxY / 4 > 0 ? maxY / 4 : 25,
                 getTitlesWidget: (value, meta) {
                   if (value == 0) return const SizedBox.shrink();
                   return Text(
-                    currencyFormat.format(value),
+                    currencyProvider.formatCompact(value, isSourceUsd: false),
                     style: TextStyle(
                       color: colors.textMuted,
                       fontSize: 10,
@@ -155,6 +158,7 @@ class CategorySpendBreakdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
+    final currencyProvider = context.watch<CurrencyProvider>();
 
     if (categories.isEmpty) {
       return Container(
@@ -173,10 +177,6 @@ class CategorySpendBreakdown extends StatelessWidget {
     }
 
     final topCategories = categories.take(6).toList();
-    final currencyFormat = NumberFormat.currency(
-      symbol: '\$',
-      decimalDigits: 0,
-    );
 
     return Column(
       children: topCategories.map((c) {
@@ -204,7 +204,7 @@ class CategorySpendBreakdown extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    '${currencyFormat.format(c.total)} (${c.count} txns)',
+                    '${currencyProvider.format(c.total, decimalDigits: 0)} (${c.count} txns)',
                     style: TextStyle(
                       color: colors.textSecondary,
                       fontSize: 11,

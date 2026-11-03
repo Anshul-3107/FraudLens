@@ -6,6 +6,7 @@ import 'config/app_theme.dart';
 import 'providers/alert_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/card_provider.dart';
+import 'providers/currency_provider.dart';
 import 'providers/dashboard_provider.dart';
 import 'providers/investigation_provider.dart';
 import 'providers/theme_provider.dart';
@@ -22,6 +23,7 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => CurrencyProvider()..initialize()),
         ChangeNotifierProvider(create: (_) => AuthProvider()..initialize()),
         ChangeNotifierProvider(create: (_) => DashboardProvider()),
         ChangeNotifierProvider(create: (_) => TransactionProvider()),

@@ -6,6 +6,7 @@ import '../../config/app_theme.dart';
 import '../../models/alert.dart';
 import '../../models/investigation.dart';
 import '../../providers/alert_provider.dart';
+import '../../providers/currency_provider.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../providers/investigation_provider.dart';
 import '../../widgets/risk_badge.dart';
@@ -95,15 +96,51 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
     }
   }
 
+  Widget _buildDetailRow(
+    BuildContext context,
+    String label,
+    String value, {
+    Widget? trailing,
+    Color? valueColor,
+    FontWeight? fontWeight,
+  }) {
+    final colors = AppColors.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(color: colors.textSecondary, fontSize: 13),
+          ),
+          const SizedBox(width: 8),
+          if (trailing != null)
+            trailing
+          else
+            Flexible(
+              child: Text(
+                value,
+                style: TextStyle(
+                  color: valueColor ?? colors.textPrimary,
+                  fontSize: 13,
+                  fontWeight: fontWeight ?? FontWeight.w600,
+                ),
+                textAlign: TextAlign.end,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
     final alert = _currentAlert;
     final txn = alert.transaction;
-    final currencyFormat = NumberFormat.currency(
-      symbol: '\$',
-      decimalDigits: 2,
-    );
+    final currencyProvider = context.watch<CurrencyProvider>();
     final dateFormat = DateFormat('MMMM d, yyyy • h:mm:ss a');
 
     return Scaffold(
@@ -136,8 +173,11 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 8,
+                    runSpacing: 6,
                     children: [
                       Text(
                         'AI FRAUD RISK EVALUATION',
@@ -194,7 +234,10 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
                   ),
                   if (alert.latestVerdict != null) ...[
                     const SizedBox(height: 14),
-                    Row(
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 6,
+                      runSpacing: 4,
                       children: [
                         Text(
                           'Latest Analyst Verdict: ',
@@ -235,110 +278,50 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
                     ),
                     const SizedBox(height: 8),
                     Divider(color: colors.borderSubtle),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Merchant',
-                          style: TextStyle(
-                            color: colors.textSecondary,
-                            fontSize: 13,
-                          ),
-                        ),
-                        Text(
-                          txn.merchant,
-                          style: TextStyle(
-                            color: colors.textPrimary,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
+                    const SizedBox(height: 4),
+                    _buildDetailRow(context, 'Merchant', txn.merchant),
+                    _buildDetailRow(
+                      context,
+                      'Amount',
+                      currencyProvider.format(txn.amount),
+                      valueColor: colors.riskCritical,
+                      fontWeight: FontWeight.w700,
                     ),
-                    const SizedBox(height: 10),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Amount',
-                          style: TextStyle(
-                            color: colors.textSecondary,
-                            fontSize: 13,
-                          ),
+                    if (currencyProvider.isConvertedFromUsd) ...[
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Original USD',
+                              style: TextStyle(
+                                color: colors.textMuted,
+                                fontSize: 11.5,
+                              ),
+                            ),
+                            Text(
+                              '\$${txn.amount.toStringAsFixed(2)} USD (Rate: 1 USD = ${currencyProvider.activeRateFromUsd.toStringAsFixed(2)} ${currencyProvider.activeCurrency})',
+                              style: TextStyle(
+                                color: colors.textMuted,
+                                fontSize: 11.5,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ],
                         ),
-                        Text(
-                          currencyFormat.format(txn.amount),
-                          style: TextStyle(
-                            color: colors.riskCritical,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
+                      ),
+                    ],
+                    _buildDetailRow(
+                      context,
+                      'Category',
+                      txn.category.replaceAll('_', ' ').toUpperCase(),
                     ),
-                    const SizedBox(height: 10),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Category',
-                          style: TextStyle(
-                            color: colors.textSecondary,
-                            fontSize: 13,
-                          ),
-                        ),
-                        Text(
-                          txn.category.replaceAll('_', ' ').toUpperCase(),
-                          style: TextStyle(
-                            color: colors.textPrimary,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Card Label',
-                          style: TextStyle(
-                            color: colors.textSecondary,
-                            fontSize: 13,
-                          ),
-                        ),
-                        Text(
-                          txn.cardLabel,
-                          style: TextStyle(
-                            color: colors.textPrimary,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Transaction Time',
-                          style: TextStyle(
-                            color: colors.textSecondary,
-                            fontSize: 13,
-                          ),
-                        ),
-                        Text(
-                          dateFormat.format(txn.occurredAt),
-                          style: TextStyle(
-                            color: colors.textPrimary,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
+                    _buildDetailRow(context, 'Card Label', txn.cardLabel),
+                    _buildDetailRow(
+                      context,
+                      'Transaction Time',
+                      dateFormat.format(txn.occurredAt),
                     ),
                   ],
                 ),
@@ -365,12 +348,16 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
                         size: 20,
                       ),
                       const SizedBox(width: 8),
-                      Text(
-                        'TreeSHAP Explainability Factors',
-                        style: TextStyle(
-                          color: colors.textPrimary,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
+                      Expanded(
+                        child: Text(
+                          'TreeSHAP Explainability Factors',
+                          style: TextStyle(
+                            color: colors.textPrimary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
@@ -418,12 +405,11 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Assign a formal verdict and log your review findings for auditing.',
+                    'Record authoritative triage judgment on this alert for audit trails.',
                     style: TextStyle(color: colors.textMuted, fontSize: 12),
                   ),
                   const SizedBox(height: 16),
 
-                  // Verdict Selector
                   DropdownButtonFormField<String>(
                     initialValue: _selectedVerdict,
                     decoration: const InputDecoration(
@@ -433,7 +419,7 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
                     items: const [
                       DropdownMenuItem(
                         value: 'confirmed_fraud',
-                        child: Text('Confirmed Fraud (Block & Resolve)'),
+                        child: Text('Confirmed Fraud (Block & Escalate)'),
                       ),
                       DropdownMenuItem(
                         value: 'false_positive',
@@ -441,58 +427,41 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
                       ),
                       DropdownMenuItem(
                         value: 'needs_info',
-                        child: Text('Needs More Information (Keep In Review)'),
+                        child: Text('Needs Information (Contact Cardholder)'),
                       ),
                     ],
                     onChanged: (val) {
                       if (val != null) setState(() => _selectedVerdict = val);
                     },
                   ),
+
                   const SizedBox(height: 14),
 
-                  // Notes
-                  TextFormField(
+                  TextField(
                     controller: _notesController,
                     maxLines: 3,
-                    maxLength: 2000,
                     decoration: const InputDecoration(
-                      labelText: 'Analyst Findings & Notes',
-                      hintText: 'e.g. Cardholder contacted via SMS; confirmed unapproved transaction from foreign IP...',
+                      labelText: 'Investigation Notes / Audit Justification',
+                      hintText: 'Document evidence, transaction verification, or customer contact notes...',
+                      alignLabelWithHint: true,
                     ),
                   ),
-                  const SizedBox(height: 16),
 
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: _submitting ? null : _submitVerdict,
-                      icon: _submitting
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  Colors.white,
-                                ),
-                              ),
-                            )
-                          : const Icon(
-                              Icons.check_circle_outline_rounded,
-                              size: 18,
-                            ),
-                      label: Text(
-                        _submitting
-                            ? 'Recording Verdict...'
-                            : 'Submit Investigation Verdict',
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _selectedVerdict == 'confirmed_fraud'
-                            ? colors.riskCritical
-                            : _selectedVerdict == 'false_positive'
-                            ? colors.riskLow
-                            : colors.primary,
-                      ),
+                  const SizedBox(height: 18),
+
+                  ElevatedButton.icon(
+                    onPressed: _submitting ? null : _submitVerdict,
+                    icon: _submitting
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.save_rounded, size: 18),
+                    label: Text(
+                      _submitting
+                          ? 'Submitting Verdict...'
+                          : 'Record Investigation Verdict',
                     ),
                   ),
                 ],

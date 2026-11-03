@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../config/app_theme.dart';
 import '../../providers/alert_provider.dart';
 import '../../providers/card_provider.dart';
+import '../../providers/currency_provider.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/error_view.dart';
 import '../../widgets/loading_indicator.dart';
@@ -153,24 +154,16 @@ class _AlertsListScreenState extends State<AlertsListScreen> {
                     ),
                     items: const [
                       DropdownMenuItem(
-                        value: null,
-                        child: Text('Newest Transaction First (Default)'),
+                        value: '-created_at',
+                        child: Text('Newest Alerts First'),
                       ),
                       DropdownMenuItem(
                         value: '-score',
-                        child: Text('Risk Score (Highest First)'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'score',
-                        child: Text('Risk Score (Lowest First)'),
-                      ),
-                      DropdownMenuItem(
-                        value: '-created_at',
-                        child: Text('Alert Created Time (Newest)'),
+                        child: Text('Highest Risk Score First'),
                       ),
                       DropdownMenuItem(
                         value: 'created_at',
-                        child: Text('Alert Created Time (Oldest)'),
+                        child: Text('Oldest Alerts First'),
                       ),
                     ],
                     onChanged: (val) => setModalState(() => tempOrdering = val),
@@ -194,7 +187,9 @@ class _AlertsListScreenState extends State<AlertsListScreen> {
                           onPressed: () {
                             alertProvider.setCard(tempCardId);
                             alertProvider.setMinScore(tempMinScore);
-                            alertProvider.setOrdering(tempOrdering);
+                            alertProvider.setOrdering(
+                              tempOrdering ?? '-created_at',
+                            );
                             Navigator.pop(ctx);
                           },
                           child: const Text('Apply'),
@@ -215,14 +210,10 @@ class _AlertsListScreenState extends State<AlertsListScreen> {
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
     final alertProvider = context.watch<AlertProvider>();
-    final currencyFormat = NumberFormat.currency(
-      symbol: '\$',
-      decimalDigits: 2,
-    );
+    final currencyProvider = context.watch<CurrencyProvider>();
     final dateFormat = DateFormat('MMM d, yyyy • h:mm a');
-
-    final totalPages = (alertProvider.count / 50).ceil();
     final activeStatus = alertProvider.statusFilter;
+    final totalPages = (alertProvider.count / 50).ceil();
 
     return Scaffold(
       backgroundColor: colors.background,
@@ -297,12 +288,16 @@ class _AlertsListScreenState extends State<AlertsListScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  '${NumberFormat.decimalPattern().format(alertProvider.count)} total alerts',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: colors.textSecondary,
-                    fontWeight: FontWeight.w500,
+                Expanded(
+                  child: Text(
+                    '${NumberFormat.decimalPattern().format(alertProvider.count)} total alerts',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: colors.textSecondary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 if (totalPages > 1)
@@ -371,7 +366,7 @@ class _AlertsListScreenState extends State<AlertsListScreen> {
                           },
                           borderRadius: BorderRadius.circular(12),
                           child: Container(
-                            padding: const EdgeInsets.all(16),
+                            padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
                               color: colors.surface,
                               borderRadius: BorderRadius.circular(12),
@@ -388,23 +383,25 @@ class _AlertsListScreenState extends State<AlertsListScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 // Header Row: Score Badge + Status
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
+                                Wrap(
+                                  alignment: WrapAlignment.spaceBetween,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  spacing: 8,
+                                  runSpacing: 6,
                                   children: [
                                     RiskScoreBadge(
                                       score: alert.score,
                                       threshold: alert.threshold,
                                     ),
-                                    Row(
+                                    Wrap(
+                                      spacing: 6,
+                                      runSpacing: 4,
                                       children: [
                                         AlertStatusBadge(status: alert.status),
-                                        if (alert.latestVerdict != null) ...[
-                                          const SizedBox(width: 6),
+                                        if (alert.latestVerdict != null)
                                           VerdictBadge(
                                             verdict: alert.latestVerdict!,
                                           ),
-                                        ],
                                       ],
                                     ),
                                   ],
@@ -443,17 +440,26 @@ class _AlertsListScreenState extends State<AlertsListScreen> {
                                               color: colors.textMuted,
                                               fontSize: 11,
                                             ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
                                           ),
                                         ],
                                       ),
                                     ),
                                     const SizedBox(width: 8),
-                                    Text(
-                                      currencyFormat.format(txn?.amount ?? 0),
-                                      style: TextStyle(
-                                        color: colors.textPrimary,
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w700,
+                                    FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      alignment: Alignment.centerRight,
+                                      child: Text(
+                                        currencyProvider.format(
+                                          txn?.amount ?? 0,
+                                        ),
+                                        style: TextStyle(
+                                          color: colors.textPrimary,
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                        maxLines: 1,
                                       ),
                                     ),
                                   ],
@@ -506,14 +512,20 @@ class _AlertsListScreenState extends State<AlertsListScreen> {
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text(
-                                      txn?.cardLabel ?? 'Alert #${alert.id}',
-                                      style: TextStyle(
-                                        color: colors.textMuted,
-                                        fontSize: 11,
+                                    Expanded(
+                                      child: Text(
+                                        txn?.cardLabel ?? 'Alert #${alert.id}',
+                                        style: TextStyle(
+                                          color: colors.textMuted,
+                                          fontSize: 11,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
+                                    const SizedBox(width: 8),
                                     Row(
+                                      mainAxisSize: MainAxisSize.min,
                                       children: [
                                         Text(
                                           'Investigate',
@@ -545,7 +557,7 @@ class _AlertsListScreenState extends State<AlertsListScreen> {
           // Pagination Bar at Bottom
           if (totalPages > 1)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: colors.surface,
                 border: Border(
@@ -560,33 +572,43 @@ class _AlertsListScreenState extends State<AlertsListScreen> {
                         alertProvider.hasPrevious && !alertProvider.isLoading
                         ? () => alertProvider.previousPage()
                         : null,
-                    icon: const Icon(Icons.chevron_left_rounded, size: 18),
-                    label: const Text('Previous'),
+                    icon: const Icon(Icons.chevron_left_rounded, size: 16),
+                    label: const Text('Prev'),
                     style: OutlinedButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
+                        horizontal: 10,
+                        vertical: 6,
                       ),
                     ),
                   ),
-                  Text(
-                    'Page ${alertProvider.page} of $totalPages',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: colors.textPrimary,
-                      fontWeight: FontWeight.w600,
+                  Flexible(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Text(
+                        'Page ${alertProvider.page} of $totalPages',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: colors.textPrimary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                      ),
                     ),
                   ),
                   OutlinedButton.icon(
                     onPressed: alertProvider.hasNext && !alertProvider.isLoading
                         ? () => alertProvider.nextPage()
                         : null,
-                    icon: const Icon(Icons.chevron_right_rounded, size: 18),
+                    icon: const Icon(Icons.chevron_right_rounded, size: 16),
                     label: const Text('Next'),
                     style: OutlinedButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
+                        horizontal: 10,
+                        vertical: 6,
                       ),
                     ),
                   ),

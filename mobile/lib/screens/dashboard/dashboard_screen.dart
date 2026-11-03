@@ -6,6 +6,7 @@ import '../../config/app_theme.dart';
 import '../../models/card.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/card_provider.dart';
+import '../../providers/currency_provider.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../widgets/error_view.dart';
 import '../../widgets/loading_indicator.dart';
@@ -184,12 +185,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final colors = AppColors.of(context);
     final authProvider = context.watch<AuthProvider>();
     final dashProvider = context.watch<DashboardProvider>();
+    final currencyProvider = context.watch<CurrencyProvider>();
     final summary = dashProvider.summary;
 
-    final currencyFormat = NumberFormat.currency(
-      symbol: '\$',
-      decimalDigits: 2,
-    );
     final countFormat = NumberFormat.decimalPattern();
 
     return Scaffold(
@@ -325,6 +323,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       builder: (context, constraints) {
                         final isWide = constraints.maxWidth > 600;
                         final crossAxisCount = isWide ? 4 : 2;
+                        final cardRatio = isWide
+                            ? 1.6
+                            : (constraints.maxWidth < 360 ? 1.12 : 1.25);
 
                         return GridView.count(
                           crossAxisCount: crossAxisCount,
@@ -332,14 +333,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           physics: const NeverScrollableScrollPhysics(),
                           mainAxisSpacing: 12,
                           crossAxisSpacing: 12,
-                          childAspectRatio: isWide ? 1.6 : 1.35,
+                          childAspectRatio: cardRatio,
                           children: [
                             MetricCard(
                               title: 'Total Volume',
-                              value: currencyFormat.format(
+                              value: currencyProvider.format(
                                 summary?.totalSpend ?? 0,
                               ),
-                              subtitle: 'Aggregate transaction spend',
+                              subtitle: currencyProvider.isConvertedFromUsd
+                                  ? 'Orig: \$${NumberFormat.compact().format(summary?.totalSpend ?? 0)} USD'
+                                  : 'Aggregate transaction spend',
                               icon: Icons.payments_outlined,
                               iconColor: colors.primary,
                             ),
@@ -399,7 +402,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                       child: LayoutBuilder(
                         builder: (context, constraints) {
-                          final isNarrow = constraints.maxWidth < 320;
+                          final isNarrow = constraints.maxWidth < 360;
                           if (isNarrow) {
                             return Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -502,28 +505,39 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          Wrap(
+                            alignment: WrapAlignment.spaceBetween,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            spacing: 8,
+                            runSpacing: 6,
                             children: [
-                              Expanded(
-                                child: Text(
-                                  'Monthly Spending Activity',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: colors.textPrimary,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                              Text(
+                                'Monthly Spending Activity',
+                                style: TextStyle(
+                                  color: colors.textPrimary,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'USD Volume',
-                                style: TextStyle(
-                                  color: colors.textMuted,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: colors.surfaceSubtle,
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: colors.borderSubtle,
+                                  ),
+                                ),
+                                child: Text(
+                                  '${currencyProvider.activeCurrency} Volume',
+                                  style: TextStyle(
+                                    color: colors.textMuted,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
                             ],

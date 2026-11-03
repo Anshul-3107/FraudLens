@@ -6,6 +6,7 @@ import 'package:fraudlens/models/summary.dart';
 import 'package:fraudlens/providers/alert_provider.dart';
 import 'package:fraudlens/providers/auth_provider.dart';
 import 'package:fraudlens/providers/card_provider.dart';
+import 'package:fraudlens/providers/currency_provider.dart';
 import 'package:fraudlens/providers/dashboard_provider.dart';
 import 'package:fraudlens/providers/investigation_provider.dart';
 import 'package:fraudlens/providers/theme_provider.dart';
@@ -26,6 +27,7 @@ Widget createTestApp({
       ChangeNotifierProvider(create: (_) => AlertProvider()),
       ChangeNotifierProvider(create: (_) => InvestigationProvider()),
       ChangeNotifierProvider(create: (_) => CardProvider()),
+      ChangeNotifierProvider(create: (_) => CurrencyProvider()),
     ],
     child: MaterialApp(
       theme: AppTheme.darkTheme,
@@ -168,62 +170,65 @@ void main() {
         ];
 
         await tester.pumpWidget(
-          MaterialApp(
-            theme: AppTheme.darkTheme,
-            home: Scaffold(
-              body: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    // Replicate the exact card header that previously overflowed
-                    Builder(
-                      builder: (context) {
-                        final colors = AppColors.of(context);
-                        return Container(
-                          padding: const EdgeInsets.all(18),
-                          decoration: BoxDecoration(
-                            color: colors.surface,
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: Column(
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      'Monthly Spending Activity',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        color: colors.textPrimary,
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w700,
+          ChangeNotifierProvider(
+            create: (_) => CurrencyProvider(),
+            child: MaterialApp(
+              theme: AppTheme.darkTheme,
+              home: Scaffold(
+                body: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      // Replicate the exact card header that previously overflowed
+                      Builder(
+                        builder: (context) {
+                          final colors = AppColors.of(context);
+                          return Container(
+                            padding: const EdgeInsets.all(18),
+                            decoration: BoxDecoration(
+                              color: colors.surface,
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Column(
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        'Monthly Spending Activity',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          color: colors.textPrimary,
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w700,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'USD Volume',
-                                    style: TextStyle(
-                                      color: colors.textMuted,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'USD Volume',
+                                      style: TextStyle(
+                                        color: colors.textMuted,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 18),
-                              MonthlySpendChart(monthlyData: testMonthly),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    CategorySpendBreakdown(categories: testCategories),
-                  ],
+                                  ],
+                                ),
+                                const SizedBox(height: 18),
+                                MonthlySpendChart(monthlyData: testMonthly),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      CategorySpendBreakdown(categories: testCategories),
+                    ],
+                  ),
                 ),
               ),
             ),

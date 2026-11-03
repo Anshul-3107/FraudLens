@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../config/app_theme.dart';
 import '../../models/transaction.dart';
 import '../../providers/card_provider.dart';
+import '../../providers/currency_provider.dart';
 import '../../providers/transaction_provider.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/error_view.dart';
@@ -44,6 +45,7 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
     final colors = AppColors.of(context);
     final txnProvider = context.read<TransactionProvider>();
     final cardProvider = context.read<CardProvider>();
+    final currencyProvider = context.read<CurrencyProvider>();
 
     int? tempCardId = txnProvider.cardId;
     String? tempCategory = txnProvider.category;
@@ -160,10 +162,14 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
-                    decoration: const InputDecoration(
-                      labelText: 'Minimum Amount (\$)',
+                    decoration: InputDecoration(
+                      labelText:
+                          'Minimum Amount (${currencyProvider.activeCurrencyInfo.symbol} USD base)',
                       hintText: '50.00',
-                      prefixIcon: Icon(Icons.attach_money_rounded, size: 20),
+                      prefixIcon: const Icon(
+                        Icons.attach_money_rounded,
+                        size: 20,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -264,10 +270,7 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
     final txnProvider = context.watch<TransactionProvider>();
-    final currencyFormat = NumberFormat.currency(
-      symbol: '\$',
-      decimalDigits: 2,
-    );
+    final currencyProvider = context.watch<CurrencyProvider>();
     final dateFormat = DateFormat('MMM d, yyyy • h:mm a');
 
     final totalPages = (txnProvider.count / 50).ceil();
@@ -287,6 +290,18 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
             onPressed: _showFilterModal,
           ),
           IconButton(
+            icon: const Icon(Icons.add_rounded),
+            tooltip: 'New Transaction',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const CreateTransactionScreen(),
+                ),
+              );
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.refresh_rounded),
             tooltip: 'Refresh',
             onPressed: () =>
@@ -294,17 +309,22 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const CreateTransactionScreen()),
-          );
-        },
-        backgroundColor: colors.primary,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add_rounded, size: 20),
-        label: const Text('New Transaction'),
+      floatingActionButton: Padding(
+        padding: EdgeInsets.only(bottom: totalPages > 1 ? 52 : 0),
+        child: FloatingActionButton.extended(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const CreateTransactionScreen(),
+              ),
+            );
+          },
+          backgroundColor: colors.primary,
+          foregroundColor: Colors.white,
+          icon: const Icon(Icons.add_rounded, size: 20),
+          label: const Text('New Transaction'),
+        ),
       ),
       body: Column(
         children: [
@@ -399,12 +419,16 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  '${NumberFormat.decimalPattern().format(txnProvider.count)} total transactions',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: colors.textSecondary,
-                    fontWeight: FontWeight.w500,
+                Expanded(
+                  child: Text(
+                    '${NumberFormat.decimalPattern().format(txnProvider.count)} total transactions',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: colors.textSecondary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 if (totalPages > 1)
@@ -447,11 +471,11 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
                         txnProvider.loadTransactions(page: txnProvider.page),
                     color: colors.primary,
                     child: ListView.separated(
-                      padding: const EdgeInsets.only(
+                      padding: EdgeInsets.only(
                         left: 16,
                         right: 16,
                         top: 4,
-                        bottom: 80,
+                        bottom: totalPages > 1 ? 120 : 80,
                       ),
                       itemCount: txnProvider.transactions.length,
                       separatorBuilder: (_, _) => const SizedBox(height: 8),
@@ -472,7 +496,7 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
                           borderRadius: BorderRadius.circular(10),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
+                              horizontal: 12,
                               vertical: 12,
                             ),
                             decoration: BoxDecoration(
@@ -488,6 +512,7 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
                               ),
                             ),
                             child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
                                 // Transaction Icon / Flag indicator
                                 Container(
@@ -515,7 +540,7 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
                                         : colors.textSecondary,
                                   ),
                                 ),
-                                const SizedBox(width: 12),
+                                const SizedBox(width: 10),
 
                                 // Merchant and date
                                 Expanded(
@@ -537,14 +562,12 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
                                               overflow: TextOverflow.ellipsis,
                                             ),
                                           ),
-                                          if (isFlagged)
+                                          if (isFlagged) ...[
+                                            const SizedBox(width: 6),
                                             Container(
-                                              margin: const EdgeInsets.only(
-                                                left: 6,
-                                              ),
                                               padding:
                                                   const EdgeInsets.symmetric(
-                                                    horizontal: 6,
+                                                    horizontal: 5,
                                                     vertical: 2,
                                                   ),
                                               decoration: BoxDecoration(
@@ -565,78 +588,73 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
                                                 ),
                                               ),
                                             ),
+                                          ],
                                         ],
                                       ),
                                       const SizedBox(height: 3),
-                                      Row(
-                                        children: [
-                                          Text(
-                                            dateFormat.format(txn.occurredAt),
-                                            style: TextStyle(
-                                              color: colors.textMuted,
-                                              fontSize: 11,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            '•',
-                                            style: TextStyle(
-                                              color: colors.textMuted,
-                                              fontSize: 10,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Flexible(
-                                            child: Text(
-                                              txn.cardLabel,
-                                              style: TextStyle(
-                                                color: colors.textMuted,
-                                                fontSize: 11,
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                        ],
+                                      Text(
+                                        '${dateFormat.format(txn.occurredAt)} • ${txn.cardLabel}',
+                                        style: TextStyle(
+                                          color: colors.textMuted,
+                                          fontSize: 11,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ],
                                   ),
                                 ),
-                                const SizedBox(width: 12),
+                                const SizedBox(width: 8),
 
                                 // Amount and Category
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.end,
+                                  mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Text(
-                                      currencyFormat.format(txn.amount),
-                                      style: TextStyle(
-                                        color: isFlagged
-                                            ? colors.riskCritical
-                                            : colors.textPrimary,
-                                        fontSize: 14.5,
-                                        fontWeight: FontWeight.w700,
+                                    FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      alignment: Alignment.centerRight,
+                                      child: Text(
+                                        currencyProvider.format(txn.amount),
+                                        style: TextStyle(
+                                          color: isFlagged
+                                              ? colors.riskCritical
+                                              : colors.textPrimary,
+                                          fontSize: 14.5,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                        maxLines: 1,
                                       ),
                                     ),
                                     const SizedBox(height: 4),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 6,
-                                        vertical: 2,
+                                    ConstrainedBox(
+                                      constraints: const BoxConstraints(
+                                        maxWidth: 95,
                                       ),
-                                      decoration: BoxDecoration(
-                                        color: colors.surfaceSubtle,
-                                        borderRadius: BorderRadius.circular(4),
-                                        border: Border.all(
-                                          color: colors.borderSubtle,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: 2,
                                         ),
-                                      ),
-                                      child: Text(
-                                        txn.formattedCategory,
-                                        style: TextStyle(
-                                          color: colors.textSecondary,
-                                          fontSize: 9.5,
-                                          fontWeight: FontWeight.w600,
+                                        decoration: BoxDecoration(
+                                          color: colors.surfaceSubtle,
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
+                                          border: Border.all(
+                                            color: colors.borderSubtle,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          txn.formattedCategory,
+                                          style: TextStyle(
+                                            color: colors.textSecondary,
+                                            fontSize: 9.5,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          textAlign: TextAlign.center,
                                         ),
                                       ),
                                     ),
@@ -654,7 +672,7 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
           // Pagination Bar at Bottom
           if (totalPages > 1)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: colors.surface,
                 border: Border(
@@ -668,33 +686,43 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
                     onPressed: txnProvider.hasPrevious && !txnProvider.isLoading
                         ? () => txnProvider.previousPage()
                         : null,
-                    icon: const Icon(Icons.chevron_left_rounded, size: 18),
-                    label: const Text('Previous'),
+                    icon: const Icon(Icons.chevron_left_rounded, size: 16),
+                    label: const Text('Prev'),
                     style: OutlinedButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
+                        horizontal: 10,
+                        vertical: 6,
                       ),
                     ),
                   ),
-                  Text(
-                    'Page ${txnProvider.page} of $totalPages',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: colors.textPrimary,
-                      fontWeight: FontWeight.w600,
+                  Flexible(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Text(
+                        'Page ${txnProvider.page} of $totalPages',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: colors.textPrimary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                      ),
                     ),
                   ),
                   OutlinedButton.icon(
                     onPressed: txnProvider.hasNext && !txnProvider.isLoading
                         ? () => txnProvider.nextPage()
                         : null,
-                    icon: const Icon(Icons.chevron_right_rounded, size: 18),
+                    icon: const Icon(Icons.chevron_right_rounded, size: 16),
                     label: const Text('Next'),
                     style: OutlinedButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
+                        horizontal: 10,
+                        vertical: 6,
                       ),
                     ),
                   ),
