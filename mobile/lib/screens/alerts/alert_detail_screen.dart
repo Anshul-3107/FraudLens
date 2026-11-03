@@ -300,12 +300,17 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
                                 fontSize: 11.5,
                               ),
                             ),
-                            Text(
-                              '\$${txn.amount.toStringAsFixed(2)} USD (Rate: 1 USD = ${currencyProvider.activeRateFromUsd.toStringAsFixed(2)} ${currencyProvider.activeCurrency})',
-                              style: TextStyle(
-                                color: colors.textMuted,
-                                fontSize: 11.5,
-                                fontStyle: FontStyle.italic,
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                '\$${txn.amount.toStringAsFixed(2)} USD (Rate: 1 USD = ${currencyProvider.activeRateFromUsd.toStringAsFixed(2)} ${currencyProvider.activeCurrency})',
+                                style: TextStyle(
+                                  color: colors.textMuted,
+                                  fontSize: 11.5,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                                textAlign: TextAlign.end,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],

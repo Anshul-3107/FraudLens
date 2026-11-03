@@ -10,6 +10,7 @@ import '../../providers/transaction_provider.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/error_view.dart';
 import '../../widgets/loading_indicator.dart';
+import '../../widgets/transaction_card.dart';
 import 'create_transaction_screen.dart';
 import 'transaction_detail_screen.dart';
 
@@ -270,9 +271,6 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
     final txnProvider = context.watch<TransactionProvider>();
-    final currencyProvider = context.watch<CurrencyProvider>();
-    final dateFormat = DateFormat('MMM d, yyyy • h:mm a');
-
     final totalPages = (txnProvider.count / 50).ceil();
 
     return Scaffold(
@@ -481,9 +479,8 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
                       separatorBuilder: (_, _) => const SizedBox(height: 8),
                       itemBuilder: (context, index) {
                         final txn = txnProvider.transactions[index];
-                        final isFlagged = txn.hasAlert;
-
-                        return InkWell(
+                        return TransactionCard(
+                          transaction: txn,
                           onTap: () {
                             Navigator.push(
                               context,
@@ -493,176 +490,6 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
                               ),
                             );
                           },
-                          borderRadius: BorderRadius.circular(10),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 12,
-                            ),
-                            decoration: BoxDecoration(
-                              color: colors.surface,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: isFlagged
-                                    ? colors.riskCritical.withValues(
-                                        alpha: 0.35,
-                                      )
-                                    : colors.borderSubtle,
-                                width: 1,
-                              ),
-                            ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                // Transaction Icon / Flag indicator
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: isFlagged
-                                        ? colors.riskCriticalBg
-                                        : colors.surfaceSubtle,
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: isFlagged
-                                          ? colors.riskCritical.withValues(
-                                              alpha: 0.25,
-                                            )
-                                          : colors.borderSubtle,
-                                    ),
-                                  ),
-                                  child: Icon(
-                                    isFlagged
-                                        ? Icons.warning_rounded
-                                        : Icons.storefront_rounded,
-                                    size: 18,
-                                    color: isFlagged
-                                        ? colors.riskCritical
-                                        : colors.textSecondary,
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-
-                                // Merchant and date
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            child: Text(
-                                              txn.merchant,
-                                              style: TextStyle(
-                                                color: colors.textPrimary,
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                          if (isFlagged) ...[
-                                            const SizedBox(width: 6),
-                                            Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 5,
-                                                    vertical: 2,
-                                                  ),
-                                              decoration: BoxDecoration(
-                                                color: colors.riskCriticalBg,
-                                                borderRadius:
-                                                    BorderRadius.circular(4),
-                                                border: Border.all(
-                                                  color: colors.riskCritical
-                                                      .withValues(alpha: 0.25),
-                                                ),
-                                              ),
-                                              child: Text(
-                                                'FLAGGED',
-                                                style: TextStyle(
-                                                  color: colors.riskCritical,
-                                                  fontSize: 9.5,
-                                                  fontWeight: FontWeight.w700,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ],
-                                      ),
-                                      const SizedBox(height: 3),
-                                      Text(
-                                        '${dateFormat.format(txn.occurredAt)} • ${txn.cardLabel}',
-                                        style: TextStyle(
-                                          color: colors.textMuted,
-                                          fontSize: 11,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-
-                                // Amount and Category
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      alignment: Alignment.centerRight,
-                                      child: Text(
-                                        currencyProvider.format(txn.amount),
-                                        style: TextStyle(
-                                          color: isFlagged
-                                              ? colors.riskCritical
-                                              : colors.textPrimary,
-                                          fontSize: 14.5,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                        maxLines: 1,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    ConstrainedBox(
-                                      constraints: const BoxConstraints(
-                                        maxWidth: 95,
-                                      ),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 6,
-                                          vertical: 2,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: colors.surfaceSubtle,
-                                          borderRadius: BorderRadius.circular(
-                                            4,
-                                          ),
-                                          border: Border.all(
-                                            color: colors.borderSubtle,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          txn.formattedCategory,
-                                          style: TextStyle(
-                                            color: colors.textSecondary,
-                                            fontSize: 9.5,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          textAlign: TextAlign.center,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
                         );
                       },
                     ),

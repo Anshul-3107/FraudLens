@@ -447,19 +447,22 @@ class _AlertsListScreenState extends State<AlertsListScreen> {
                                       ),
                                     ),
                                     const SizedBox(width: 8),
-                                    FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      alignment: Alignment.centerRight,
-                                      child: Text(
-                                        currencyProvider.format(
-                                          txn?.amount ?? 0,
+                                    ConstrainedBox(
+                                      constraints: const BoxConstraints(maxWidth: 110),
+                                      child: FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        alignment: Alignment.centerRight,
+                                        child: Text(
+                                          currencyProvider.format(
+                                            txn?.amount ?? 0,
+                                          ),
+                                          style: TextStyle(
+                                            color: colors.textPrimary,
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                          maxLines: 1,
                                         ),
-                                        style: TextStyle(
-                                          color: colors.textPrimary,
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                        maxLines: 1,
                                       ),
                                     ),
                                   ],

@@ -111,7 +111,14 @@ class StagingShadowSafetyTests(TestCase):
         """Candidate threshold file must have model_type == 'standalone_xgboost'."""
         scorer = CandidateShadowScorer()
         prod_thresh = Path(settings.ML_ARTIFACTS_DIR) / "threshold.json"
-        with override_settings(CANDIDATE_THRESHOLD_PATH=prod_thresh):
+        candidate_dir = Path(settings.BASE_DIR).parent / "ml" / "artifacts" / "candidate_standalone_xgb"
+        candidate_model = candidate_dir / "xgb_model.joblib"
+        candidate_explain = candidate_dir / "candidate_explain.py"
+        with override_settings(
+            CANDIDATE_MODEL_PATH=candidate_model,
+            CANDIDATE_THRESHOLD_PATH=prod_thresh,
+            CANDIDATE_EXPLAIN_PATH=candidate_explain,
+        ):
             with self.assertRaises(ValueError):
                 # Direct get_bundle() enforces strict schema check
                 scorer._bundle = None

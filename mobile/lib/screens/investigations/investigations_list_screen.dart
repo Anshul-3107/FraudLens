@@ -3,12 +3,11 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_theme.dart';
-import '../../providers/currency_provider.dart';
 import '../../providers/investigation_provider.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/error_view.dart';
+import '../../widgets/investigation_card.dart';
 import '../../widgets/loading_indicator.dart';
-import '../../widgets/risk_badge.dart';
 
 class InvestigationsListScreen extends StatefulWidget {
   const InvestigationsListScreen({super.key});
@@ -34,8 +33,6 @@ class _InvestigationsListScreenState extends State<InvestigationsListScreen> {
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
     final invProvider = context.watch<InvestigationProvider>();
-    final currencyProvider = context.watch<CurrencyProvider>();
-    final dateFormat = DateFormat('MMM d, yyyy • h:mm a');
     final totalPages = (invProvider.count / 50).ceil();
 
     return Scaffold(
@@ -111,141 +108,7 @@ class _InvestigationsListScreenState extends State<InvestigationsListScreen> {
                       separatorBuilder: (_, _) => const SizedBox(height: 10),
                       itemBuilder: (context, index) {
                         final inv = invProvider.investigations[index];
-
-                        return Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: colors.surface,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: colors.borderSubtle,
-                              width: 1,
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Wrap(
-                                alignment: WrapAlignment.spaceBetween,
-                                crossAxisAlignment: WrapCrossAlignment.center,
-                                spacing: 8,
-                                runSpacing: 4,
-                                children: [
-                                  VerdictBadge(verdict: inv.verdict),
-                                  Text(
-                                    'Alert #${inv.alert}',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: colors.textMuted,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 10),
-
-                              // Merchant and Amount
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      inv.merchant,
-                                      style: TextStyle(
-                                        color: colors.textPrimary,
-                                        fontSize: 14.5,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    alignment: Alignment.centerRight,
-                                    child: Text(
-                                      currencyProvider.format(inv.amount),
-                                      style: TextStyle(
-                                        color: colors.textPrimary,
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                      maxLines: 1,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-
-                              // Analyst info and date (using Wrap to prevent horizontal overflow)
-                              Wrap(
-                                crossAxisAlignment: WrapCrossAlignment.center,
-                                spacing: 6,
-                                runSpacing: 4,
-                                children: [
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.person_pin_rounded,
-                                        size: 14,
-                                        color: colors.primary,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        inv.analystName != null
-                                            ? 'Analyst: ${inv.analystName}'
-                                            : 'System review',
-                                        style: TextStyle(
-                                          color: colors.textSecondary,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  Text(
-                                    '•',
-                                    style: TextStyle(color: colors.textMuted),
-                                  ),
-                                  Text(
-                                    dateFormat.format(inv.createdAt),
-                                    style: TextStyle(
-                                      color: colors.textMuted,
-                                      fontSize: 11,
-                                    ),
-                                  ),
-                                ],
-                              ),
-
-                              // Notes if provided
-                              if (inv.notes.isNotEmpty) ...[
-                                const SizedBox(height: 10),
-                                Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: colors.surfaceSubtle,
-                                    borderRadius: BorderRadius.circular(6),
-                                    border: Border.all(
-                                      color: colors.borderSubtle,
-                                    ),
-                                  ),
-                                  child: Text(
-                                    inv.notes,
-                                    style: TextStyle(
-                                      color: colors.textSecondary,
-                                      fontSize: 12,
-                                      height: 1.35,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        );
+                        return InvestigationCard(investigation: inv);
                       },
                     ),
                   ),

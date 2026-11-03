@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fraudlens/config/app_theme.dart';
@@ -10,6 +11,11 @@ import 'package:fraudlens/screens/profile/profile_screen.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  GoogleFonts.config.allowRuntimeFetching = false;
+
+  setUpAll(() {
+    GoogleFonts.config.allowRuntimeFetching = false;
+  });
 
   group('Theme System & AppColors Tests', () {
     test('AppColors.dark returns appropriate dark surfaces and borders', () {

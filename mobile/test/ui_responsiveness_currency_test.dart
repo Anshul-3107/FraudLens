@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fraudlens/config/app_theme.dart';
+import 'package:fraudlens/models/card.dart';
+import 'package:fraudlens/models/investigation.dart';
+import 'package:fraudlens/models/paginated_response.dart';
+import 'package:fraudlens/models/transaction.dart';
 import 'package:fraudlens/providers/alert_provider.dart';
 import 'package:fraudlens/providers/auth_provider.dart';
 import 'package:fraudlens/providers/card_provider.dart';
@@ -11,25 +16,85 @@ import 'package:fraudlens/providers/dashboard_provider.dart';
 import 'package:fraudlens/providers/investigation_provider.dart';
 import 'package:fraudlens/providers/theme_provider.dart';
 import 'package:fraudlens/providers/transaction_provider.dart';
-import 'package:fraudlens/screens/investigations/investigations_list_screen.dart';
 import 'package:fraudlens/screens/transactions/transactions_list_screen.dart';
+import 'package:fraudlens/services/card_service.dart';
 import 'package:fraudlens/services/currency_service.dart';
+import 'package:fraudlens/services/transaction_service.dart';
+import 'package:fraudlens/widgets/investigation_card.dart';
 import 'package:fraudlens/widgets/metric_card.dart';
+import 'package:fraudlens/widgets/transaction_card.dart';
+
+// Mock TransactionService returning fast controlled pagination data without network requests
+class MockTransactionService extends TransactionService {
+  final List<TransactionModel> mockTransactions;
+  final int totalCount;
+
+  MockTransactionService({
+    required this.mockTransactions,
+    this.totalCount = 120,
+  });
+
+  @override
+  Future<PaginatedResponse<TransactionModel>> getTransactions({
+    int page = 1,
+    int? cardId,
+    String? category,
+    String? search,
+    String? dateFrom,
+    String? dateTo,
+    double? minAmount,
+    bool? flagged,
+  }) async {
+    return PaginatedResponse<TransactionModel>(
+      count: totalCount,
+      next: page < (totalCount / 50).ceil() ? '${page + 1}' : null,
+      previous: page > 1 ? '${page - 1}' : null,
+      results: mockTransactions,
+    );
+  }
+}
+
+// Mock CardService returning controlled cards without network requests
+class MockCardService extends CardService {
+  @override
+  Future<List<CardModel>> getAllCards() async => [];
+
+  @override
+  Future<PaginatedResponse<CardModel>> getCards({int page = 1}) async {
+    return PaginatedResponse<CardModel>(
+      count: 0,
+      next: null,
+      previous: null,
+      results: [],
+    );
+  }
+}
 
 Widget createTestAppWithProviders({
   required Widget child,
   Size size = const Size(360, 640),
   CurrencyProvider? currencyProvider,
+  TransactionService? transactionService,
+  CardService? cardService,
 }) {
   return MultiProvider(
     providers: [
       ChangeNotifierProvider(create: (_) => ThemeProvider()),
       ChangeNotifierProvider(create: (_) => AuthProvider()),
       ChangeNotifierProvider(create: (_) => DashboardProvider()),
-      ChangeNotifierProvider(create: (_) => TransactionProvider()),
+      ChangeNotifierProvider(
+        create: (_) => TransactionProvider(
+          transactionService:
+              transactionService ??
+              MockTransactionService(mockTransactions: []),
+        ),
+      ),
       ChangeNotifierProvider(create: (_) => AlertProvider()),
       ChangeNotifierProvider(create: (_) => InvestigationProvider()),
-      ChangeNotifierProvider(create: (_) => CardProvider()),
+      ChangeNotifierProvider(
+        create: (_) =>
+            CardProvider(cardService: cardService ?? MockCardService()),
+      ),
       ChangeNotifierProvider(
         create: (_) => currencyProvider ?? CurrencyProvider(),
       ),
@@ -46,6 +111,11 @@ Widget createTestAppWithProviders({
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  GoogleFonts.config.allowRuntimeFetching = false;
+
+  setUpAll(() {
+    GoogleFonts.config.allowRuntimeFetching = false;
+  });
 
   group('Part 1 & 2: MetricCard & Dashboard Overflow Verification Across Screen Sizes', () {
     final screenSizes = [
@@ -115,7 +185,7 @@ void main() {
             ),
           );
 
-          await tester.pumpAndSettle();
+          await tester.pump();
 
           // Must not trigger any bottom overflow exception
           expect(tester.takeException(), isNull);
@@ -153,7 +223,7 @@ void main() {
           ),
         );
 
-        await tester.pumpAndSettle();
+        await tester.pump();
         expect(tester.takeException(), isNull);
         expect(find.text('₹12,45,67,89,000.00'), findsOneWidget);
       },
@@ -161,6 +231,10 @@ void main() {
   });
 
   group('Part 3: Transactions Screen Responsiveness & FAB Spacing', () {
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+    });
+
     testWidgets(
       'Transaction list item with long merchant and flagged badge renders without overflow on 320px',
       (tester) async {
@@ -170,17 +244,48 @@ void main() {
         final currencyProvider = CurrencyProvider();
         await currencyProvider.initialize();
 
+        final mockTxn = TransactionModel(
+          id: 101,
+          transRef: 'TXN-LONG-REF-998877665544',
+          card: 42,
+          cardLabel: 'Visa Platinum •• 4242',
+          occurredAt: DateTime(2026, 11, 3, 14, 30),
+          merchant: 'Global International Merchant Services & Transatlantic Logistics Corporation Limited',
+          category: 'entertainment_ticketing',
+          amount: 14840.50,
+          source: 'simulated',
+          hasAlert: true,
+        );
+
         await tester.pumpWidget(
-          createTestAppWithProviders(
-            size: const Size(320, 640),
-            currencyProvider: currencyProvider,
-            child: const TransactionsListScreen(),
+          ChangeNotifierProvider.value(
+            value: currencyProvider,
+            child: MaterialApp(
+              theme: AppTheme.darkTheme,
+              home: Scaffold(
+                body: Center(
+                  child: SizedBox(
+                    width: 320,
+                    child: TransactionCard(transaction: mockTxn),
+                  ),
+                ),
+              ),
+            ),
           ),
         );
 
-        await tester.pumpAndSettle();
+        await tester.pump();
+
+        // Must render cleanly with zero RenderFlex overflow on 320px width
         expect(tester.takeException(), isNull);
-        expect(find.text('Transactions'), findsWidgets);
+        expect(find.text('FLAGGED'), findsOneWidget);
+        expect(
+          find.text(
+            'Global International Merchant Services & Transatlantic Logistics Corporation Limited',
+          ),
+          findsOneWidget,
+        );
+        expect(find.text(currencyProvider.format(14840.50)), findsOneWidget);
       },
     );
 
@@ -193,27 +298,69 @@ void main() {
         final currencyProvider = CurrencyProvider();
         await currencyProvider.initialize();
 
+        final sampleTxn = TransactionModel(
+          id: 1,
+          transRef: 'TXN-001',
+          card: 1,
+          cardLabel: 'Debit Card •• 1234',
+          occurredAt: DateTime(2026, 11, 3, 10, 0),
+          merchant: 'Acme Supermarket',
+          category: 'groceries',
+          amount: 54.20,
+          source: 'simulated',
+          hasAlert: false,
+        );
+
+        final mockTxnService = MockTransactionService(
+          mockTransactions: [sampleTxn],
+          totalCount: 120, // 3 pages total (totalPages > 1)
+        );
+
         await tester.pumpWidget(
           createTestAppWithProviders(
             size: const Size(360, 640),
             currencyProvider: currencyProvider,
+            transactionService: mockTxnService,
             child: const TransactionsListScreen(),
           ),
         );
 
-        await tester.pumpAndSettle();
+        // Run postFrameCallback to complete initialization with mock data
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
 
-        // Check AppBar action button exists for quick accessibility
+        // 1. Verify AppBar contains New Transaction action button
         expect(find.byTooltip('New Transaction'), findsOneWidget);
 
-        // Check FloatingActionButton exists
+        // 2. Verify FloatingActionButton exists
         expect(find.byType(FloatingActionButton), findsOneWidget);
+
+        // 3. Verify pagination controls are visible and accessible
+        expect(find.text('Prev'), findsOneWidget);
+        expect(find.text('Next'), findsOneWidget);
+        expect(find.text('Page 1 of 3'), findsNWidgets(2));
+
+        // 4. Verify FAB has bottom margin so it does NOT obscure pagination controls
+        final fabPadding = tester.widget<Padding>(
+          find
+              .ancestor(
+                of: find.byType(FloatingActionButton),
+                matching: find.byType(Padding),
+              )
+              .first,
+        );
+        expect((fabPadding.padding as EdgeInsets).bottom, 52);
+
         expect(tester.takeException(), isNull);
       },
     );
   });
 
   group('Part 4: Investigation History Card Overflow Fixes', () {
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+    });
+
     testWidgets(
       'Investigation card with long analyst name, bullet, and timestamp wraps without overflow on 320px',
       (tester) async {
@@ -223,17 +370,61 @@ void main() {
         final currencyProvider = CurrencyProvider();
         await currencyProvider.initialize();
 
+        final mockInv = InvestigationModel(
+          id: 501,
+          alert: 707,
+          analystName: 'Senior Lead Fraud Analyst Alexander Montgomery-Smith',
+          verdict: 'confirmed_fraud',
+          notes: 'Automated anomaly detected suspicious card velocity exceeding normal behavioral thresholds across multi-jurisdictional POS terminals.',
+          createdAt: DateTime(2026, 11, 3, 15, 45),
+          merchant:
+              'Global Transatlantic International Electronics Corporation Ltd',
+          amount: 45999.00,
+          occurredAt: DateTime(2026, 11, 3, 14, 0),
+        );
+
         await tester.pumpWidget(
-          createTestAppWithProviders(
-            size: const Size(320, 640),
-            currencyProvider: currencyProvider,
-            child: const InvestigationsListScreen(),
+          ChangeNotifierProvider.value(
+            value: currencyProvider,
+            child: MaterialApp(
+              theme: AppTheme.darkTheme,
+              home: Scaffold(
+                body: Center(
+                  child: SizedBox(
+                    width: 320,
+                    child: InvestigationCard(investigation: mockInv),
+                  ),
+                ),
+              ),
+            ),
           ),
         );
 
-        await tester.pumpAndSettle();
+        await tester.pump();
+
+        // Must render cleanly with zero RenderFlex overflow on 320px width
         expect(tester.takeException(), isNull);
-        expect(find.text('Investigation History'), findsWidgets);
+        expect(find.text('Confirmed Fraud'), findsOneWidget);
+        expect(find.text('Alert #707'), findsOneWidget);
+        expect(
+          find.text(
+            'Global Transatlantic International Electronics Corporation Ltd',
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.text(
+            'Analyst: Senior Lead Fraud Analyst Alexander Montgomery-Smith',
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.text(
+            'Automated anomaly detected suspicious card velocity exceeding normal behavioral thresholds across multi-jurisdictional POS terminals.',
+          ),
+          findsOneWidget,
+        );
+        expect(find.text(currencyProvider.format(45999.00)), findsOneWidget);
       },
     );
   });
