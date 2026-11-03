@@ -8,17 +8,23 @@ import '../services/currency_service.dart';
 class CurrencyProvider extends ChangeNotifier {
   static const String _kCurrencyModeKey = 'fraudlens_currency_mode';
   static const String _kCurrencyCodeKey = 'fraudlens_currency_code';
+  static const String _kRegionCodeKey = 'fraudlens_region_code';
   static const String _kExchangeRatesKey = 'fraudlens_exchange_rates';
+  static const String _kRatesLastUpdatedKey = 'fraudlens_exchange_rates_updated';
 
   CurrencyMode _mode = CurrencyMode.auto;
   String _detectedCurrency = 'USD';
   String _selectedCurrency = 'USD';
+  String _selectedRegion = 'US';
   Map<String, double> _exchangeRates = {};
+  String? _ratesLastUpdated;
+  bool _isSyncingRates = false;
   bool _initialized = false;
 
   CurrencyProvider() {
     _detectedCurrency = CurrencyService.detectCurrencyFromLocale();
     _selectedCurrency = _detectedCurrency;
+    _selectedRegion = _currencyToRegionCode(_selectedCurrency);
   }
 
   bool get isInitialized => _initialized;
@@ -27,10 +33,22 @@ class CurrencyProvider extends ChangeNotifier {
   bool get isAuto => isAutoMode;
   String get detectedCurrency => _detectedCurrency;
   String get activeCurrency => _selectedCurrency;
+  String get activeRegionCode => _selectedRegion;
+  String? get ratesLastUpdated => _ratesLastUpdated;
+  bool get isSyncingRates => _isSyncingRates;
 
   CurrencyInfo get activeCurrencyInfo =>
       CurrencyService.supportedCurrencies[_selectedCurrency] ??
       CurrencyService.supportedCurrencies['USD']!;
+
+  RegionInfo get activeRegionInfo =>
+      CurrencyService.supportedRegions.firstWhere(
+        (r) => r.countryCode == _selectedRegion,
+        orElse: () => CurrencyService.supportedRegions.firstWhere(
+          (r) => r.currencyCode == _selectedCurrency,
+          orElse: () => CurrencyService.supportedRegions[0],
+        ),
+      );
 
   bool get isConvertedFromUsd => _selectedCurrency != 'USD';
 
@@ -40,7 +58,14 @@ class CurrencyProvider extends ChangeNotifier {
         activeCurrencyInfo.defaultRateFromUsd;
   }
 
-  /// Initialize and load saved currency preferences.
+  static String _currencyToRegionCode(String curr) {
+    for (final reg in CurrencyService.supportedRegions) {
+      if (reg.currencyCode == curr) return reg.countryCode;
+    }
+    return 'US';
+  }
+
+  /// Initialize and load saved currency & regional preferences.
   Future<void> initialize() async {
     _detectedCurrency = CurrencyService.detectCurrencyFromLocale();
 
@@ -49,7 +74,9 @@ class CurrencyProvider extends ChangeNotifier {
 
       final savedMode = prefs.getString(_kCurrencyModeKey);
       final savedCode = prefs.getString(_kCurrencyCodeKey);
+      final savedRegion = prefs.getString(_kRegionCodeKey);
       final savedRates = prefs.getString(_kExchangeRatesKey);
+      _ratesLastUpdated = prefs.getString(_kRatesLastUpdatedKey);
 
       if (savedRates != null) {
         try {
@@ -65,17 +92,66 @@ class CurrencyProvider extends ChangeNotifier {
           CurrencyService.supportedCurrencies.containsKey(savedCode)) {
         _mode = CurrencyMode.manual;
         _selectedCurrency = savedCode;
+        _selectedRegion = savedRegion ?? _currencyToRegionCode(savedCode);
       } else {
         _mode = CurrencyMode.auto;
         _selectedCurrency = _detectedCurrency;
+        _selectedRegion = _currencyToRegionCode(_detectedCurrency);
       }
     } catch (_) {
       _mode = CurrencyMode.auto;
       _selectedCurrency = _detectedCurrency;
+      _selectedRegion = _currencyToRegionCode(_detectedCurrency);
     } finally {
       _initialized = true;
       notifyListeners();
     }
+
+    // Attempt background live rate sync from backend
+    syncRatesFromBackend();
+  }
+
+  /// Background sync with Django /api/exchange-rates/ endpoint
+  Future<void> syncRatesFromBackend() async {
+    if (_isSyncingRates) return;
+    _isSyncingRates = true;
+
+    try {
+      final freshRates = await CurrencyService.fetchRatesFromBackend();
+      if (freshRates != null && freshRates.isNotEmpty) {
+        _exchangeRates = freshRates;
+        _ratesLastUpdated = DateTime.now().toLocal().toString().substring(11, 16);
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_kExchangeRatesKey, jsonEncode(_exchangeRates));
+        await prefs.setString(_kRatesLastUpdatedKey, _ratesLastUpdated!);
+      }
+    } catch (_) {
+      // Retain existing cached or fallback rates
+    } finally {
+      _isSyncingRates = false;
+      notifyListeners();
+    }
+  }
+
+  /// Select a region (e.g. 'IN', 'US', 'GB', 'EU'). Automatically updates currency.
+  Future<void> selectRegion(String countryCode) async {
+    final region = CurrencyService.supportedRegions.firstWhere(
+      (r) => r.countryCode == countryCode,
+      orElse: () => CurrencyService.supportedRegions[0],
+    );
+
+    _mode = CurrencyMode.manual;
+    _selectedRegion = region.countryCode;
+    _selectedCurrency = region.currencyCode;
+    notifyListeners();
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_kCurrencyModeKey, 'manual');
+      await prefs.setString(_kCurrencyCodeKey, _selectedCurrency);
+      await prefs.setString(_kRegionCodeKey, _selectedRegion);
+    } catch (_) {}
   }
 
   /// Switch back to automatic regional detection.
@@ -83,12 +159,14 @@ class CurrencyProvider extends ChangeNotifier {
     _mode = CurrencyMode.auto;
     _detectedCurrency = CurrencyService.detectCurrencyFromLocale();
     _selectedCurrency = _detectedCurrency;
+    _selectedRegion = _currencyToRegionCode(_detectedCurrency);
     notifyListeners();
 
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_kCurrencyModeKey, 'auto');
       await prefs.remove(_kCurrencyCodeKey);
+      await prefs.remove(_kRegionCodeKey);
     } catch (_) {}
   }
 

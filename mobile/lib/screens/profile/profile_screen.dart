@@ -317,14 +317,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Row(
                     children: [
                       Icon(
-                        Icons.currency_exchange_rounded,
+                        Icons.public_rounded,
                         size: 18,
                         color: colors.primary,
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Regional Currency & Conversion',
+                          'Region & Regional Currency',
                           style: TextStyle(
                             color: colors.textPrimary,
                             fontSize: 14,
@@ -337,25 +337,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'FraudLens natively preserves USD ledger amounts while automatically formatting and converting into your regional currency.',
+                    'Select your region. FraudLens automatically formats currency and applies live fluctuating exchange rates from the backend.',
                     style: TextStyle(fontSize: 12, color: colors.textMuted),
                   ),
                   const SizedBox(height: 14),
 
-                  // Mode selection: Auto vs Manual
+                  // Mode selection: Auto-Detect vs Choose Region
                   SegmentedButton<CurrencyMode>(
                     segments: [
                       ButtonSegment(
                         value: CurrencyMode.auto,
                         icon: const Icon(Icons.auto_awesome_rounded, size: 15),
                         label: Text(
-                          'Auto (${currencyProvider.detectedCurrency})',
+                          'Auto-Detect (${currencyProvider.detectedCurrency})',
                         ),
                       ),
                       const ButtonSegment(
                         value: CurrencyMode.manual,
-                        icon: Icon(Icons.tune_rounded, size: 15),
-                        label: Text('Manual Override'),
+                        icon: Icon(Icons.travel_explore_rounded, size: 15),
+                        label: Text('Choose Region'),
                       ),
                     ],
                     selected: {currencyProvider.mode},
@@ -363,8 +363,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       if (newSelection.first == CurrencyMode.auto) {
                         currencyProvider.setAutoMode();
                       } else {
-                        currencyProvider.setManualCurrency(
-                          currencyProvider.activeCurrency,
+                        currencyProvider.selectRegion(
+                          currencyProvider.activeRegionCode,
                         );
                       }
                     },
@@ -382,7 +382,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   if (!currencyProvider.isAutoMode) ...[
                     const SizedBox(height: 14),
                     Text(
-                      'Select Display Currency:',
+                      'Select Operating Region:',
                       style: TextStyle(
                         fontSize: 12,
                         color: colors.textSecondary,
@@ -393,14 +393,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Wrap(
                       spacing: 8,
                       runSpacing: 6,
-                      children: CurrencyService.supportedCurrencies.values.map((
-                        info,
-                      ) {
+                      children: CurrencyService.supportedRegions.map((region) {
                         final isSelected =
-                            currencyProvider.activeCurrency == info.code;
+                            currencyProvider.activeRegionCode ==
+                            region.countryCode;
+                        final curr =
+                            CurrencyService.supportedCurrencies[region
+                                .currencyCode];
                         return ChoiceChip(
                           label: Text(
-                            '${info.flagEmoji} ${info.code} (${info.symbol})',
+                            '${region.flagEmoji} ${region.name} (${curr?.symbol ?? region.currencyCode})',
                             style: TextStyle(
                               fontSize: 11.5,
                               fontWeight: isSelected
@@ -410,7 +412,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                           selected: isSelected,
                           onSelected: (_) =>
-                              currencyProvider.setManualCurrency(info.code),
+                              currencyProvider.selectRegion(region.countryCode),
                         );
                       }).toList(),
                     ),
@@ -430,7 +432,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: Row(
                       children: [
                         Icon(
-                          Icons.info_outline_rounded,
+                          Icons.currency_exchange_rounded,
                           size: 15,
                           color: colors.primary,
                         ),
@@ -438,14 +440,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Expanded(
                           child: Text(
                             currencyProvider.isConvertedFromUsd
-                                ? 'Active Rate: 1 USD = ${currencyProvider.activeRateFromUsd.toStringAsFixed(2)} ${currencyProvider.activeCurrency} (Live conversion applied)'
-                                : 'Active Currency: USD (Base currency, 1:1)',
+                                ? 'Live FX: 1 USD = ${currencyProvider.activeRateFromUsd.toStringAsFixed(2)} ${currencyProvider.activeCurrency}'
+                                    '${currencyProvider.ratesLastUpdated != null ? " • Synced ${currencyProvider.ratesLastUpdated}" : ""}'
+                                : 'Active Base Currency: USD (1:1 standard)',
                             style: TextStyle(
                               fontSize: 11.5,
                               color: colors.textSecondary,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
+                        ),
+                        IconButton(
+                          icon: currencyProvider.isSyncingRates
+                              ? const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.sync_rounded, size: 16),
+                          tooltip: 'Sync Live Exchange Rates',
+                          onPressed: currencyProvider.isSyncingRates
+                              ? null
+                              : () => currencyProvider.syncRatesFromBackend(),
                         ),
                       ],
                     ),

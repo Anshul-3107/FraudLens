@@ -3,8 +3,8 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from .views import (
-    AlertViewSet, CardViewSet, InvestigationViewSet, LoginView, LogoutView,
-    MeView, RegisterView, SummaryView, TransactionViewSet,
+    AlertViewSet, CardViewSet, ExchangeRatesView, InvestigationViewSet, LoginView,
+    LogoutView, MeView, RegisterView, SummaryView, TransactionViewSet,
 )
 
 router = DefaultRouter()
@@ -19,5 +19,6 @@ urlpatterns = [
     path("auth/logout/", LogoutView.as_view()),
     path("auth/me/", MeView.as_view()),
     path("summary/", SummaryView.as_view()),
+    path("exchange-rates/", ExchangeRatesView.as_view()),
     path("", include(router.urls)),
 ]

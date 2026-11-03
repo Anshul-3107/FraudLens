@@ -1,8 +1,26 @@
+import 'dart:convert';
 import 'dart:ui';
 
+import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 
+import '../config/api_config.dart';
+
 enum CurrencyMode { auto, manual }
+
+class RegionInfo {
+  final String countryCode; // e.g. 'IN', 'US', 'GB', 'DE', 'CA', 'AU', 'JP'
+  final String name; // e.g. 'India', 'United States'
+  final String currencyCode; // e.g. 'INR', 'USD'
+  final String flagEmoji; // e.g. '🇮🇳'
+
+  const RegionInfo({
+    required this.countryCode,
+    required this.name,
+    required this.currencyCode,
+    required this.flagEmoji,
+  });
+}
 
 class CurrencyInfo {
   final String code; // e.g. 'INR', 'USD', 'GBP', 'EUR'
@@ -58,6 +76,51 @@ class ConvertedAmountDetails {
 class CurrencyService {
   static const String baseCurrency = 'USD';
 
+  static const List<RegionInfo> supportedRegions = [
+    RegionInfo(
+      countryCode: 'IN',
+      name: 'India',
+      currencyCode: 'INR',
+      flagEmoji: '🇮🇳',
+    ),
+    RegionInfo(
+      countryCode: 'US',
+      name: 'United States',
+      currencyCode: 'USD',
+      flagEmoji: '🇺🇸',
+    ),
+    RegionInfo(
+      countryCode: 'GB',
+      name: 'United Kingdom',
+      currencyCode: 'GBP',
+      flagEmoji: '🇬🇧',
+    ),
+    RegionInfo(
+      countryCode: 'EU',
+      name: 'European Union',
+      currencyCode: 'EUR',
+      flagEmoji: '🇪🇺',
+    ),
+    RegionInfo(
+      countryCode: 'CA',
+      name: 'Canada',
+      currencyCode: 'CAD',
+      flagEmoji: '🇨🇦',
+    ),
+    RegionInfo(
+      countryCode: 'AU',
+      name: 'Australia',
+      currencyCode: 'AUD',
+      flagEmoji: '🇦🇺',
+    ),
+    RegionInfo(
+      countryCode: 'JP',
+      name: 'Japan',
+      currencyCode: 'JPY',
+      flagEmoji: '🇯🇵',
+    ),
+  ];
+
   static const Map<String, CurrencyInfo> supportedCurrencies = {
     'INR': CurrencyInfo(
       code: 'INR',
@@ -91,6 +154,30 @@ class CurrencyService {
       defaultRateFromUsd: 0.92,
       flagEmoji: '🇪🇺',
     ),
+    'CAD': CurrencyInfo(
+      code: 'CAD',
+      name: 'Canadian Dollar',
+      symbol: 'CA\$',
+      locale: 'en_CA',
+      defaultRateFromUsd: 1.38,
+      flagEmoji: '🇨🇦',
+    ),
+    'AUD': CurrencyInfo(
+      code: 'AUD',
+      name: 'Australian Dollar',
+      symbol: 'A\$',
+      locale: 'en_AU',
+      defaultRateFromUsd: 1.54,
+      flagEmoji: '🇦🇺',
+    ),
+    'JPY': CurrencyInfo(
+      code: 'JPY',
+      name: 'Japanese Yen',
+      symbol: '¥',
+      locale: 'ja_JP',
+      defaultRateFromUsd: 152.0,
+      flagEmoji: '🇯🇵',
+    ),
   };
 
   static const Map<String, String> _countryToCurrency = {
@@ -98,6 +185,9 @@ class CurrencyService {
     'US': 'USD',
     'GB': 'GBP',
     'UK': 'GBP',
+    'CA': 'CAD',
+    'AU': 'AUD',
+    'JP': 'JPY',
     // Eurozone countries
     'DE': 'EUR',
     'FR': 'EUR',
@@ -119,6 +209,24 @@ class CurrencyService {
     'LV': 'EUR',
     'LT': 'EUR',
   };
+
+  /// Fetches cached exchange rates from the Django backend (/api/exchange-rates/).
+  static Future<Map<String, double>?> fetchRatesFromBackend() async {
+    try {
+      final uri = Uri.parse(ApiConfig.exchangeRatesUrl);
+      final response = await http.get(uri).timeout(const Duration(seconds: 4));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final rawRates = data['rates'] as Map<String, dynamic>?;
+        if (rawRates != null) {
+          return rawRates.map((k, v) => MapEntry(k, (v as num).toDouble()));
+        }
+      }
+    } catch (_) {
+      // Graceful fallback to cached or default rates
+    }
+    return null;
+  }
 
   /// Detects the regional currency from device locale.
   static String detectCurrencyFromLocale([Locale? locale]) {

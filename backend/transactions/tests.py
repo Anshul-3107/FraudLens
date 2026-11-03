@@ -1295,4 +1295,16 @@ class MLArtifactsAndSecurityRegressionTests(TestCase):
                         "amount": "30.00",
                     },
                     format="json",
-                )
+                )
+
+    def test_exchange_rates_endpoint_returns_valid_structure(self):
+        # Test GET /api/exchange-rates/
+        resp = self.client.get("/api/exchange-rates/")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.data.get("base"), "USD")
+        rates = resp.data.get("rates", {})
+        self.assertIn("INR", rates)
+        self.assertIn("EUR", rates)
+        self.assertIn("GBP", rates)
+        self.assertGreater(rates["INR"], 50.0)
+        self.assertIn("updated_at", resp.data)

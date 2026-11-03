@@ -371,3 +371,71 @@ class SummaryView(APIView):
                 for r in monthly
             ],
         })
+
+
+# ---------------------------------------------------------------- exchange rates
+class ExchangeRatesView(APIView):
+    """Provides cached real-time exchange rates against base USD.
+
+    Refreshes from European Central Bank (Frankfurter API) with fallback to
+    reliable benchmark rates, cached for 1 hour to handle network resilience.
+    """
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "anon"
+
+    _FALLBACK_RATES = {
+        "INR": 86.50,
+        "USD": 1.0,
+        "EUR": 0.92,
+        "GBP": 0.79,
+        "CAD": 1.38,
+        "AUD": 1.54,
+        "JPY": 152.0,
+    }
+
+    _CACHE_KEY = "fraudlens_exchange_rates_usd"
+    _CACHE_TTL_SECONDS = 3600  # 1 hour
+
+    def get(self, request):
+        from django.core.cache import cache
+        import json
+        import urllib.request
+        from django.utils import timezone
+
+        cached = cache.get(self._CACHE_KEY)
+        if cached:
+            return Response(cached)
+
+        # Attempt to fetch live rates from ECB (Frankfurter API)
+        rates = dict(self._FALLBACK_RATES)
+        source = "fallback"
+
+        try:
+            req = urllib.request.Request(
+                "https://api.frankfurter.dev/v1/latest?base=USD",
+                headers={"User-Agent": "FraudLens-Backend/1.0"},
+            )
+            with urllib.request.urlopen(req, timeout=3.5) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                live_rates = data.get("rates", {})
+                for curr in self._FALLBACK_RATES:
+                    if curr == "USD":
+                        continue
+                    if curr in live_rates:
+                        rates[curr] = float(live_rates[curr])
+                source = "live_ecb"
+        except Exception as exc:
+            logger.info("External exchange rate fetch failed (%s); using fallback rates.", exc)
+
+        payload = {
+            "base": "USD",
+            "rates": rates,
+            "source": source,
+            "updated_at": timezone.now().isoformat(),
+        }
+
+        # Cache payload
+        cache.set(self._CACHE_KEY, payload, timeout=self._CACHE_TTL_SECONDS)
+        return Response(payload)

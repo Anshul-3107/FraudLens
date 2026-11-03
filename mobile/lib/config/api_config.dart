@@ -83,6 +83,7 @@ class ApiConfig {
   static String get transactionsUrl => '$baseUrl/api/transactions/';
   static String get alertsUrl => '$baseUrl/api/alerts/';
   static String get investigationsUrl => '$baseUrl/api/investigations/';
+  static String get exchangeRatesUrl => '$baseUrl/api/exchange-rates/';
 
   static String alertInvestigateUrl(int alertId) =>
       '$baseUrl/api/alerts/$alertId/investigate/';

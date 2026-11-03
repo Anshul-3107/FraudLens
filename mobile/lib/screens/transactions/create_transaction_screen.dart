@@ -62,13 +62,17 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
       return;
     }
 
-    final amount = double.tryParse(_amountController.text.trim());
-    if (amount == null || amount <= 0) {
+    final rawInput = double.tryParse(_amountController.text.trim());
+    if (rawInput == null || rawInput <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a valid amount')),
       );
       return;
     }
+
+    final currencyProvider = context.read<CurrencyProvider>();
+    // If the active currency is non-USD (e.g. INR), convert to USD base for the ML models
+    final amountInUsd = currencyProvider.convertToUsd(rawInput);
 
     setState(() {
       _submitting = true;
@@ -81,7 +85,7 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
         occurredAt: _occurredAt.toUtc(),
         merchant: _merchantController.text.trim(),
         category: _selectedCategory,
-        amount: amount,
+        amount: amountInUsd,
         transRef: _transRefController.text.trim().isNotEmpty
             ? _transRefController.text.trim()
             : null,
@@ -299,7 +303,7 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
                     ),
                     const SizedBox(height: 14),
 
-                    // Amount
+                    // Amount Input
                     TextFormField(
                       controller: _amountController,
                       keyboardType: const TextInputType.numberWithOptions(
@@ -307,11 +311,23 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
                       ),
                       decoration: InputDecoration(
                         labelText:
-                            'Amount (USD base • ${currencyProvider.activeCurrency})',
-                        hintText: '85.50',
-                        prefixIcon: const Icon(
-                          Icons.attach_money_rounded,
-                          size: 20,
+                            'Amount in ${currencyProvider.activeCurrencyInfo.name} (${currencyProvider.activeCurrencyInfo.symbol})',
+                        hintText: currencyProvider.activeCurrency == 'INR'
+                            ? '5000.00'
+                            : '85.50',
+                        prefixIcon: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Center(
+                            widthFactor: 1.0,
+                            child: Text(
+                              currencyProvider.activeCurrencyInfo.symbol,
+                              style: TextStyle(
+                                color: colors.primary,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                       onChanged: (_) => setState(() {}),
@@ -333,8 +349,9 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
                           final val =
                               double.tryParse(_amountController.text.trim()) ??
                               0.0;
+                          final usdVal = currencyProvider.convertToUsd(val);
                           return Text(
-                            '≈ ${currencyProvider.format(val)} (${currencyProvider.activeCurrency}) at 1 USD = ${currencyProvider.activeRateFromUsd.toStringAsFixed(2)} ${currencyProvider.activeCurrency}',
+                            '≈ \$${usdVal.toStringAsFixed(2)} USD normalized base sent to ML models (1 USD = ${currencyProvider.activeRateFromUsd.toStringAsFixed(2)} ${currencyProvider.activeCurrency})',
                             style: TextStyle(
                               color: colors.textMuted,
                               fontSize: 11.5,

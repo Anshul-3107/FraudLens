@@ -465,6 +465,10 @@ void main() {
       );
       expect(
         CurrencyService.detectCurrencyFromLocale(const Locale('ja', 'JP')),
+        'JPY',
+      );
+      expect(
+        CurrencyService.detectCurrencyFromLocale(const Locale('xx', 'ZZ')),
         'USD',
       ); // Fallback
     });
@@ -564,6 +568,21 @@ void main() {
       expect(provider2.mode, CurrencyMode.manual);
       expect(provider2.activeCurrency, 'GBP');
       expect(provider2.format(100.0), contains('£79.00'));
+    });
+
+    test('CurrencyProvider selectRegion sets region and matching currency', () async {
+      final provider = CurrencyProvider();
+      await provider.initialize();
+
+      await provider.selectRegion('IN');
+      expect(provider.activeRegionCode, 'IN');
+      expect(provider.activeCurrency, 'INR');
+      expect(provider.activeCurrencyInfo.symbol, '₹');
+
+      await provider.selectRegion('GB');
+      expect(provider.activeRegionCode, 'GB');
+      expect(provider.activeCurrency, 'GBP');
+      expect(provider.activeCurrencyInfo.symbol, '£');
     });
   });
 }
