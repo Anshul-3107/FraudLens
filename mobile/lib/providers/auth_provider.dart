@@ -26,9 +26,12 @@ class AuthProvider extends ChangeNotifier {
   UserMe? get user => _user;
   String? get token => _token;
   String? get errorMessage => _errorMessage;
+  String? get devOtp => _devOtp;
   bool get isAuthenticated =>
       _status == AuthStatus.authenticated && _token != null;
   bool get isLoading => _isLoading;
+
+  String? _devOtp;
 
   void _handleUnauthorized() {
     _status = AuthStatus.unauthenticated;
@@ -147,10 +150,14 @@ class AuthProvider extends ChangeNotifier {
   Future<bool> sendOtp(String phone) async {
     _isLoading = true;
     _errorMessage = null;
+    _devOtp = null;
     notifyListeners();
 
     try {
-      await _authService.sendOtp(phone);
+      final res = await _authService.sendOtp(phone);
+      if (res['dev_otp'] != null) {
+        _devOtp = res['dev_otp'].toString();
+      }
       _isLoading = false;
       notifyListeners();
       return true;

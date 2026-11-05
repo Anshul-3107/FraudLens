@@ -2,6 +2,7 @@ import logging
 import math
 import secrets
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction as db_transaction
 from django.db.models import Count, Exists, OuterRef, Sum
@@ -109,14 +110,25 @@ class SendOtpView(APIView):
         )
 
         # Dispatch real SMS via configured gateway
-        send_live_sms(phone, otp)
+        delivery_res = send_live_sms(phone, otp)
 
-        logger.info("OTP dispatched for phone %s from IP %s", phone[:6] + "XXXX", get_client_ip(request))
-        return Response({
+        logger.info(
+            "OTP dispatched for phone %s from IP %s (channel: %s)",
+            phone[:6] + "XXXX",
+            get_client_ip(request),
+            delivery_res.get("channel"),
+        )
+        response_data = {
             "detail": "Verification code sent to registered mobile number.",
             "phone": phone,
             "expires_in_seconds": 300,
-        }, status=status.HTTP_200_OK)
+            "delivery_channel": delivery_res.get("channel", "sms"),
+        }
+        if getattr(settings, "DEBUG", False):
+            response_data["dev_otp"] = otp
+            response_data["gateway_message"] = delivery_res.get("message")
+
+        return Response(response_data, status=status.HTTP_200_OK)
 
 
 class VerifyOtpView(APIView):

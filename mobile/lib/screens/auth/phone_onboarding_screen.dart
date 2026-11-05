@@ -83,9 +83,19 @@ class _PhoneOnboardingScreenState extends State<PhoneOnboardingScreen> {
     if (success) {
       _startResendTimer();
       setState(() => _step = OnboardingStep.enterOtp);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Verification code sent to $formattedPhone')),
-      );
+      if (auth.devOtp != null && auth.devOtp!.isNotEmpty) {
+        _otpController.text = auth.devOtp!;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Test Mode OTP: ${auth.devOtp} (Logged to console)'),
+            duration: const Duration(seconds: 6),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Verification code sent to $formattedPhone')),
+        );
+      }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(auth.errorMessage ?? 'Failed to send verification code')),
@@ -240,14 +250,14 @@ class _PhoneOnboardingScreenState extends State<PhoneOnboardingScreen> {
                   decoration: InputDecoration(
                     labelText: 'Mobile Number',
                     hintText: '9876543210',
-                    prefixIcon: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      alignment: Alignment.centerLeft,
-                      width: 80,
+                    prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+                    prefixIcon: Padding(
+                      padding: const EdgeInsets.only(left: 14, right: 10),
                       child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Text('🇮🇳', style: TextStyle(fontSize: 18)),
-                          const SizedBox(width: 4),
+                          const Text('🇮🇳', style: TextStyle(fontSize: 16)),
+                          const SizedBox(width: 6),
                           Text(
                             '+91',
                             style: TextStyle(
@@ -255,6 +265,12 @@ class _PhoneOnboardingScreenState extends State<PhoneOnboardingScreen> {
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
                             ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            width: 1,
+                            height: 18,
+                            color: colors.border,
                           ),
                         ],
                       ),
