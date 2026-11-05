@@ -199,6 +199,8 @@ REST_FRAMEWORK = {
         "user": os.environ.get("DJANGO_THROTTLE_USER", "300/minute"),
         "auth_register": os.environ.get("DJANGO_THROTTLE_AUTH_REGISTER", "10/minute"),
         "auth_login": os.environ.get("DJANGO_THROTTLE_AUTH_LOGIN", "20/minute"),
+        "auth_otp_send": os.environ.get("DJANGO_THROTTLE_AUTH_OTP_SEND", "5/minute"),
+        "auth_otp_verify": os.environ.get("DJANGO_THROTTLE_AUTH_OTP_VERIFY", "10/minute"),
     },
     "EXCEPTION_HANDLER": "transactions.exceptions.custom_exception_handler",
 }

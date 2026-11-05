@@ -78,6 +78,9 @@ class ApiConfig {
   static String get loginUrl => '$baseUrl/api/auth/login/';
   static String get logoutUrl => '$baseUrl/api/auth/logout/';
   static String get meUrl => '$baseUrl/api/auth/me/';
+  static String get sendOtpUrl => '$baseUrl/api/auth/phone/send-otp/';
+  static String get verifyOtpUrl => '$baseUrl/api/auth/phone/verify-otp/';
+  static String get linkBankUrl => '$baseUrl/api/accounts/link-bank/';
   static String get summaryUrl => '$baseUrl/api/summary/';
   static String get cardsUrl => '$baseUrl/api/cards/';
   static String get transactionsUrl => '$baseUrl/api/transactions/';

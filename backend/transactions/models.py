@@ -21,6 +21,25 @@ class Card(models.Model):
         return self.label or f"Card {self.card_ref[-4:]}"
 
 
+class PhoneVerification(models.Model):
+    """Stores short-lived hashed OTPs for mobile onboarding."""
+    phone_number = models.CharField(max_length=20, db_index=True)
+    otp_hash = models.CharField(max_length=128)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    is_verified = models.BooleanField(default=False)
+    attempts = models.IntegerField(default=0)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["phone_number", "is_verified", "expires_at"]),
+        ]
+
+    def __str__(self):
+        return f"OTP for {self.phone_number} (verified: {self.is_verified})"
+
+
 class Transaction(models.Model):
     class Source(models.TextChoices):
         SIMULATED = "simulated", "Simulated (Sparkov dataset)"

@@ -1,10 +1,12 @@
 import logging
 import math
+import secrets
 
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction as db_transaction
 from django.db.models import Count, Exists, OuterRef, Sum
 from django.db.models.functions import TruncMonth
+from django.utils import timezone
 from django.utils.dateparse import parse_date
 from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.authtoken.models import Token
@@ -16,8 +18,9 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from .ingest import ingest_transaction
-from .models import Alert, Card, Investigation, Transaction
+from .models import Alert, Card, Investigation, PhoneVerification, Transaction
 from .permissions import IsOwnerOrStaff
+from .sms_service import generate_otp_code, hash_otp, send_live_sms
 from .serializers import (
     AlertSerializer, CardSerializer, InvestigationCreateSerializer,
     InvestigationSerializer, RegisterSerializer, TransactionCreateSerializer,
@@ -80,6 +83,132 @@ def param_date(params, key):
 
 
 # ---------------------------------------------------------------- auth
+class SendOtpView(APIView):
+    """Generates and sends a 6-digit verification code via live SMS."""
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth_otp_send"
+
+    def post(self, request):
+        phone = str(request.data.get("phone", "")).strip()
+        if not phone or len(phone) < 10:
+            return Response({"error": "A valid mobile phone number is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Invalidate any prior unverified OTPs for this phone number
+        PhoneVerification.objects.filter(phone_number=phone, is_verified=False).delete()
+
+        otp = generate_otp_code(6)
+        otp_hashed = hash_otp(phone, otp)
+        expires_at = timezone.now() + timezone.timedelta(minutes=5)
+
+        PhoneVerification.objects.create(
+            phone_number=phone,
+            otp_hash=otp_hashed,
+            expires_at=expires_at,
+        )
+
+        # Dispatch real SMS via configured gateway
+        send_live_sms(phone, otp)
+
+        logger.info("OTP dispatched for phone %s from IP %s", phone[:6] + "XXXX", get_client_ip(request))
+        return Response({
+            "detail": "Verification code sent to registered mobile number.",
+            "phone": phone,
+            "expires_in_seconds": 300,
+        }, status=status.HTTP_200_OK)
+
+
+class VerifyOtpView(APIView):
+    """Verifies the 6-digit OTP and logs in / registers the user."""
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth_otp_verify"
+
+    def post(self, request):
+        phone = str(request.data.get("phone", "")).strip()
+        code = str(request.data.get("code", "")).strip()
+
+        if not phone or not code or len(code) != 6:
+            return Response({"error": "Phone number and 6-digit code are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        now = timezone.now()
+        record = PhoneVerification.objects.filter(
+            phone_number=phone,
+            is_verified=False,
+            expires_at__gte=now,
+        ).first()
+
+        if not record:
+            return Response({"error": "Expired or invalid verification code. Please request a new one."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if record.attempts >= 5:
+            record.delete()
+            return Response({"error": "Too many failed attempts. Code invalidated."}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+
+        expected_hash = hash_otp(phone, code)
+        if record.otp_hash != expected_hash:
+            record.attempts += 1
+            record.save(update_fields=["attempts"])
+            return Response({"error": "Incorrect verification code. Please check and retry."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Mark verified
+        record.is_verified = True
+        record.save(update_fields=["is_verified"])
+
+        # Authenticate or create user account linked to this phone
+        sanitized_username = f"user_{phone.replace('+', '').replace(' ', '')}"[-30:]
+        user, created = User.objects.get_or_create(
+            username=sanitized_username,
+            defaults={"is_active": True},
+        )
+        token, _ = Token.objects.get_or_create(user=user)
+
+        logger.info(
+            "Phone verified successfully: %s -> User '%s' (created=%s)",
+            phone[:6] + "XXXX",
+            user.username,
+            created,
+        )
+
+        return Response({
+            "token": token.key,
+            "username": user.username,
+            "phone": phone,
+            "is_new_user": created,
+        }, status=status.HTTP_200_OK)
+
+
+class LinkBankAccountView(APIView):
+    """Links a real bank account / card to the user's profile."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        account_number = str(request.data.get("account_number", "")).strip()
+        bank_name = str(request.data.get("bank_name", "Primary Bank")).strip()
+        home_lat = request.data.get("home_lat")
+        home_long = request.data.get("home_long")
+
+        if not account_number or len(account_number) < 4:
+            return Response({"error": "A valid account or card number (at least 4 digits) is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        last4 = account_number[-4:]
+        card_ref = f"bank_{request.user.id}_{last4}_{secrets.token_hex(3)}"
+        label = f"{bank_name} A/c •• {last4}"
+
+        card = Card.objects.create(
+            owner=request.user,
+            card_ref=card_ref,
+            label=label,
+            home_lat=float(home_lat) if home_lat is not None else None,
+            home_long=float(home_long) if home_long is not None else None,
+        )
+
+        logger.info("Bank account linked for user '%s': %s", request.user.username, label)
+        return Response(CardSerializer(card).data, status=status.HTTP_201_CREATED)
+
+
 class RegisterView(APIView):
     permission_classes = [permissions.AllowAny]
     authentication_classes = []

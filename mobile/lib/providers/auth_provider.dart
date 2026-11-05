@@ -144,6 +144,78 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> sendOtp(String phone) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _authService.sendOtp(phone);
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> verifyOtp(String phone, String code) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final authResp = await _authService.verifyOtp(phone: phone, code: code);
+      _token = authResp.token;
+      ApiClient.instance.setToken(_token);
+
+      final me = await _authService.getMe();
+      _user = me;
+      _status = AuthStatus.authenticated;
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> linkBankAccount({
+    required String bankName,
+    required String accountNumber,
+    double? homeLat,
+    double? homeLong,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _authService.linkBankAccount(
+        bankName: bankName,
+        accountNumber: accountNumber,
+        homeLat: homeLat,
+        homeLong: homeLong,
+      );
+      // Refresh user profile after linking card
+      await refreshProfile();
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<void> refreshProfile() async {
     try {
       final me = await _authService.getMe();

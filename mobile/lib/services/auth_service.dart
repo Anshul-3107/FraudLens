@@ -83,6 +83,40 @@ class AuthService {
     return authResp;
   }
 
+  Future<Map<String, dynamic>> sendOtp(String phone) async {
+    final body = {'phone': phone.trim()};
+    final response = await _client.post(ApiConfig.sendOtpUrl, body: body);
+    return response as Map<String, dynamic>;
+  }
+
+  Future<AuthResponse> verifyOtp({
+    required String phone,
+    required String code,
+  }) async {
+    final body = {'phone': phone.trim(), 'code': code.trim()};
+    final response = await _client.post(ApiConfig.verifyOtpUrl, body: body);
+    final authResp = AuthResponse.fromJson(response as Map<String, dynamic>);
+    await saveToken(authResp.token);
+    return authResp;
+  }
+
+  Future<Map<String, dynamic>> linkBankAccount({
+    required String bankName,
+    required String accountNumber,
+    double? homeLat,
+    double? homeLong,
+  }) async {
+    final body = <String, dynamic>{
+      'bank_name': bankName.trim(),
+      'account_number': accountNumber.trim(),
+    };
+    if (homeLat != null) body['home_lat'] = homeLat;
+    if (homeLong != null) body['home_long'] = homeLong;
+
+    final response = await _client.post(ApiConfig.linkBankUrl, body: body);
+    return response as Map<String, dynamic>;
+  }
+
   Future<UserMe> getMe() async {
     final response = await _client.get(ApiConfig.meUrl);
     final user = UserMe.fromJson(response as Map<String, dynamic>);
