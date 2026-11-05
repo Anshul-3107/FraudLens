@@ -107,8 +107,22 @@ class CurrencyProvider extends ChangeNotifier {
       notifyListeners();
     }
 
-    // Attempt background live rate sync from backend
+    // Attempt background live rate sync from backend and IP location verification
     syncRatesFromBackend();
+    _verifyNetworkLocation();
+  }
+
+  void _verifyNetworkLocation() {
+    CurrencyService.detectCurrencyFromNetwork().then((netCurrency) {
+      if (netCurrency != null && _mode == CurrencyMode.auto) {
+        _detectedCurrency = netCurrency;
+        if (_selectedCurrency != netCurrency) {
+          _selectedCurrency = netCurrency;
+          _selectedRegion = _currencyToRegionCode(netCurrency);
+          notifyListeners();
+        }
+      }
+    });
   }
 
   /// Background sync with Django /api/exchange-rates/ endpoint
@@ -168,6 +182,8 @@ class CurrencyProvider extends ChangeNotifier {
       await prefs.remove(_kCurrencyCodeKey);
       await prefs.remove(_kRegionCodeKey);
     } catch (_) {}
+
+    _verifyNetworkLocation();
   }
 
   /// Switch mode explicitly.

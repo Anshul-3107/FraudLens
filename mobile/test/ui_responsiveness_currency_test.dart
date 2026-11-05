@@ -474,6 +474,17 @@ void main() {
     });
 
     test(
+      'CurrencyService automatically detects INR when system is in Indian Standard Timezone (IST)',
+      () {
+        // If system local time is in India (UTC +5:30), detectCurrencyFromLocale() returns INR
+        if (DateTime.now().timeZoneOffset.inMinutes == 330 ||
+            DateTime.now().timeZoneName.toUpperCase().contains('IST')) {
+          expect(CurrencyService.detectCurrencyFromLocale(), 'INR');
+        }
+      },
+    );
+
+    test(
       'CurrencyService formats INR with correct Indian numbering and symbol',
       () {
         final formatted = CurrencyService.formatAmount(

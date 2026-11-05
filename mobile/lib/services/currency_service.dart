@@ -228,18 +228,115 @@ class CurrencyService {
     return null;
   }
 
-  /// Detects the regional currency from device locale.
+  /// Detects the regional currency from device timezone, configured locales, and system settings.
   static String detectCurrencyFromLocale([Locale? locale]) {
-    final effectiveLocale = locale ?? PlatformDispatcher.instance.locale;
-    final countryCode = effectiveLocale.countryCode?.toUpperCase();
-    if (countryCode != null && _countryToCurrency.containsKey(countryCode)) {
-      return _countryToCurrency[countryCode]!;
+    // If an explicit locale was provided (e.g. in unit tests or specific overrides), honor it
+    if (locale != null) {
+      final countryCode = locale.countryCode?.toUpperCase();
+      if (countryCode != null && _countryToCurrency.containsKey(countryCode)) {
+        return _countryToCurrency[countryCode]!;
+      }
+      if (locale.languageCode.toLowerCase() == 'hi') {
+        return 'INR';
+      }
+      return baseCurrency;
     }
-    // Check language code as fallback
-    if (effectiveLocale.languageCode.toLowerCase() == 'hi') {
+
+    // 1. Device hardware & OS timezone offset & name (works offline, 0ms latency, zero permissions)
+    // India Standard Time (IST) offset is strictly UTC +5:30 (+330 minutes)
+    final offset = DateTime.now().timeZoneOffset;
+    final timeZoneName = DateTime.now().timeZoneName.toUpperCase();
+
+    if (offset.inMinutes == 330 ||
+        timeZoneName.contains('IST') ||
+        timeZoneName.contains('KOLKATA') ||
+        timeZoneName.contains('CALCUTTA') ||
+        timeZoneName.contains('INDIA')) {
       return 'INR';
     }
+
+    // Japan (JST) is UTC +9:00 (+540 minutes)
+    if (offset.inMinutes == 540 ||
+        timeZoneName.contains('JST') ||
+        timeZoneName.contains('TOKYO')) {
+      return 'JPY';
+    }
+
+    // United Kingdom (GMT / BST) is UTC 0:00 or +1:00
+    if ((offset.inMinutes == 0 || offset.inMinutes == 60) &&
+        (timeZoneName.contains('GMT') ||
+            timeZoneName.contains('BST') ||
+            timeZoneName.contains('LONDON'))) {
+      return 'GBP';
+    }
+
+    // Eurozone (CET / CEST) is UTC +1:00 or +2:00
+    if ((offset.inMinutes == 60 || offset.inMinutes == 120) &&
+        (timeZoneName.contains('CET') ||
+            timeZoneName.contains('CEST') ||
+            timeZoneName.contains('BERLIN') ||
+            timeZoneName.contains('PARIS') ||
+            timeZoneName.contains('MADRID') ||
+            timeZoneName.contains('ROME') ||
+            timeZoneName.contains('AMSTERDAM'))) {
+      return 'EUR';
+    }
+
+    // Australia (AEST / ACST / AWST) is UTC +8:00 to +11:00
+    if (offset.inMinutes >= 480 &&
+        offset.inMinutes <= 660 &&
+        (timeZoneName.contains('AEST') ||
+            timeZoneName.contains('ACST') ||
+            timeZoneName.contains('AWST') ||
+            timeZoneName.contains('SYDNEY') ||
+            timeZoneName.contains('MELBOURNE') ||
+            timeZoneName.contains('BRISBANE'))) {
+      return 'AUD';
+    }
+
+    // 2. Check all configured system locales on the device
+    const indianLanguages = {
+      'hi', 'bn', 'te', 'mr', 'ta', 'gu', 'kn', 'ml', 'pa', 'or', 'as', 'ur',
+    };
+    for (final loc in PlatformDispatcher.instance.locales) {
+      final cc = loc.countryCode?.toUpperCase();
+      if (cc == 'IN' || indianLanguages.contains(loc.languageCode.toLowerCase())) {
+        return 'INR';
+      }
+      if (cc != null && _countryToCurrency.containsKey(cc)) {
+        return _countryToCurrency[cc]!;
+      }
+    }
+
+    // 3. Fallback to primary system locale
+    final primary = PlatformDispatcher.instance.locale;
+    final primaryCountry = primary.countryCode?.toUpperCase();
+    if (primaryCountry != null && _countryToCurrency.containsKey(primaryCountry)) {
+      return _countryToCurrency[primaryCountry]!;
+    }
+    if (indianLanguages.contains(primary.languageCode.toLowerCase())) {
+      return 'INR';
+    }
+
     return baseCurrency;
+  }
+
+  /// Asynchronously detects the currency based on device IP geolocation.
+  static Future<String?> detectCurrencyFromNetwork() async {
+    try {
+      final uri = Uri.parse('https://api.country.is');
+      final response = await http.get(uri).timeout(const Duration(seconds: 3));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final country = (data['country'] as String?)?.toUpperCase();
+        if (country != null && _countryToCurrency.containsKey(country)) {
+          return _countryToCurrency[country];
+        }
+      }
+    } catch (_) {
+      // Silently fall back to device timezone & locale
+    }
+    return null;
   }
 
   /// Converts a USD-denominated amount into target currency.
