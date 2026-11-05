@@ -416,6 +416,7 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
                   const SizedBox(height: 16),
 
                   DropdownButtonFormField<String>(
+                    isExpanded: true,
                     initialValue: _selectedVerdict,
                     decoration: const InputDecoration(
                       labelText: 'Investigation Verdict',
@@ -424,15 +425,24 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
                     items: const [
                       DropdownMenuItem(
                         value: 'confirmed_fraud',
-                        child: Text('Confirmed Fraud (Block & Escalate)'),
+                        child: Text(
+                          'Confirmed Fraud (Block & Escalate)',
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                       DropdownMenuItem(
                         value: 'false_positive',
-                        child: Text('False Positive (Legitimate Spend)'),
+                        child: Text(
+                          'False Positive (Legitimate Spend)',
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                       DropdownMenuItem(
                         value: 'needs_info',
-                        child: Text('Needs Information (Contact Cardholder)'),
+                        child: Text(
+                          'Needs Information (Contact Cardholder)',
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                     onChanged: (val) {

@@ -95,6 +95,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                   // Card Selector
                   DropdownButtonFormField<CardModel?>(
+                    isExpanded: true,
                     initialValue: tempCard,
                     decoration: const InputDecoration(
                       labelText: 'Filter by Card',
@@ -103,12 +104,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     items: [
                       const DropdownMenuItem<CardModel?>(
                         value: null,
-                        child: Text('All Cards (Portfolio-wide)'),
+                        child: Text(
+                          'All Cards (Portfolio-wide)',
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                       ...cardProvider.cards.map(
                         (c) => DropdownMenuItem<CardModel?>(
                           value: c,
-                          child: Text(c.label),
+                          child: Text(
+                            c.label,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ),
                     ],

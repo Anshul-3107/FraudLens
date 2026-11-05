@@ -113,6 +113,7 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
 
                   // Card Filter
                   DropdownButtonFormField<int?>(
+                    isExpanded: true,
                     initialValue: tempCardId,
                     decoration: const InputDecoration(
                       labelText: 'Card',
@@ -121,12 +122,18 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
                     items: [
                       const DropdownMenuItem<int?>(
                         value: null,
-                        child: Text('All Cards'),
+                        child: Text(
+                          'All Cards',
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                       ...cardProvider.cards.map(
                         (c) => DropdownMenuItem<int?>(
                           value: c.id,
-                          child: Text(c.label),
+                          child: Text(
+                            c.label,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ),
                     ],
@@ -136,6 +143,7 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
 
                   // Category Filter
                   DropdownButtonFormField<String?>(
+                    isExpanded: true,
                     initialValue: tempCategory,
                     decoration: const InputDecoration(
                       labelText: 'Category',
@@ -144,12 +152,18 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
                     items: [
                       const DropdownMenuItem<String?>(
                         value: null,
-                        child: Text('All Categories'),
+                        child: Text(
+                          'All Categories',
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                       ...kTransactionCategories.map(
                         (cat) => DropdownMenuItem<String?>(
                           value: cat,
-                          child: Text(cat.replaceAll('_', ' ').toUpperCase()),
+                          child: Text(
+                            cat.replaceAll('_', ' ').toUpperCase(),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ),
                     ],

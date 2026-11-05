@@ -91,6 +91,7 @@ class _AlertsListScreenState extends State<AlertsListScreen> {
 
                   // Card Selector
                   DropdownButtonFormField<int?>(
+                    isExpanded: true,
                     initialValue: tempCardId,
                     decoration: const InputDecoration(
                       labelText: 'Card',
@@ -99,12 +100,18 @@ class _AlertsListScreenState extends State<AlertsListScreen> {
                     items: [
                       const DropdownMenuItem<int?>(
                         value: null,
-                        child: Text('All Cards'),
+                        child: Text(
+                          'All Cards',
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                       ...cardProvider.cards.map(
                         (c) => DropdownMenuItem<int?>(
                           value: c.id,
-                          child: Text(c.label),
+                          child: Text(
+                            c.label,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ),
                     ],
@@ -114,6 +121,7 @@ class _AlertsListScreenState extends State<AlertsListScreen> {
 
                   // Min Score Selector
                   DropdownButtonFormField<double?>(
+                    isExpanded: true,
                     initialValue: tempMinScore,
                     decoration: const InputDecoration(
                       labelText: 'Minimum Risk Score',
@@ -122,23 +130,38 @@ class _AlertsListScreenState extends State<AlertsListScreen> {
                     items: const [
                       DropdownMenuItem(
                         value: null,
-                        child: Text('All Scores (>= 0%)'),
+                        child: Text(
+                          'All Scores (>= 0%)',
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                       DropdownMenuItem(
                         value: 0.50,
-                        child: Text('>= 50% Elevated Risk'),
+                        child: Text(
+                          '>= 50% Elevated Risk',
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                       DropdownMenuItem(
                         value: 0.65,
-                        child: Text('>= 65% Threshold'),
+                        child: Text(
+                          '>= 65% Threshold',
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                       DropdownMenuItem(
                         value: 0.80,
-                        child: Text('>= 80% Critical Risk'),
+                        child: Text(
+                          '>= 80% Critical Risk',
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                       DropdownMenuItem(
                         value: 0.90,
-                        child: Text('>= 90% High Confidence'),
+                        child: Text(
+                          '>= 90% High Confidence',
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                     onChanged: (val) => setModalState(() => tempMinScore = val),
@@ -147,6 +170,7 @@ class _AlertsListScreenState extends State<AlertsListScreen> {
 
                   // Ordering Selector
                   DropdownButtonFormField<String?>(
+                    isExpanded: true,
                     initialValue: tempOrdering,
                     decoration: const InputDecoration(
                       labelText: 'Sort Order',
@@ -155,15 +179,24 @@ class _AlertsListScreenState extends State<AlertsListScreen> {
                     items: const [
                       DropdownMenuItem(
                         value: '-created_at',
-                        child: Text('Newest Alerts First'),
+                        child: Text(
+                          'Newest Alerts First',
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                       DropdownMenuItem(
                         value: '-score',
-                        child: Text('Highest Risk Score First'),
+                        child: Text(
+                          'Highest Risk Score First',
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                       DropdownMenuItem(
                         value: 'created_at',
-                        child: Text('Oldest Alerts First'),
+                        child: Text(
+                          'Oldest Alerts First',
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                     onChanged: (val) => setModalState(() => tempOrdering = val),

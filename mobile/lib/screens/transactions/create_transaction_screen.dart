@@ -282,6 +282,7 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
                   children: [
                     // Card Selection
                     DropdownButtonFormField<CardModel?>(
+                      isExpanded: true,
                       initialValue:
                           _selectedCard ??
                           (cardProvider.cards.isNotEmpty
@@ -294,7 +295,10 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
                       items: cardProvider.cards.map((c) {
                         return DropdownMenuItem<CardModel?>(
                           value: c,
-                          child: Text(c.label),
+                          child: Text(
+                            c.label,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         );
                       }).toList(),
                       onChanged: (val) => setState(() => _selectedCard = val),
@@ -379,6 +383,7 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
 
                     // Category
                     DropdownButtonFormField<String>(
+                      isExpanded: true,
                       initialValue: _selectedCategory,
                       decoration: const InputDecoration(
                         labelText: 'Spending Category',
@@ -387,7 +392,10 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
                       items: kTransactionCategories.map((cat) {
                         return DropdownMenuItem<String>(
                           value: cat,
-                          child: Text(cat.replaceAll('_', ' ').toUpperCase()),
+                          child: Text(
+                            cat.replaceAll('_', ' ').toUpperCase(),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         );
                       }).toList(),
                       onChanged: (val) {
@@ -447,6 +455,7 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
 
                     // Source
                     DropdownButtonFormField<String>(
+                      isExpanded: true,
                       initialValue: _source,
                       decoration: const InputDecoration(
                         labelText: 'Ingestion Channel',
@@ -455,15 +464,24 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
                       items: const [
                         DropdownMenuItem(
                           value: 'upload',
-                          child: Text('Simulated Real-time Transaction'),
+                          child: Text(
+                            'Simulated Real-time Transaction',
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                         DropdownMenuItem(
                           value: 'batch',
-                          child: Text('Batch Ingestion'),
+                          child: Text(
+                            'Batch Ingestion',
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                         DropdownMenuItem(
                           value: 'manual',
-                          child: Text('Manual Analyst Entry'),
+                          child: Text(
+                            'Manual Analyst Entry',
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ],
                       onChanged: (val) {
