@@ -348,14 +348,14 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
                   Row(
                     children: [
                       Icon(
-                        Icons.psychology_rounded,
+                        Icons.insights_rounded,
                         color: colors.primary,
                         size: 20,
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'TreeSHAP Explainability Factors',
+                          'Risk Factor Analysis',
                           style: TextStyle(
                             color: colors.textPrimary,
                             fontSize: 14,
@@ -369,13 +369,13 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Identified by the model as contributing most strongly to this transaction being flagged:',
+                    'Factors contributing most strongly to this transaction being flagged:',
                     style: TextStyle(color: colors.textMuted, fontSize: 12),
                   ),
                   const SizedBox(height: 14),
                   if (alert.reasons.isEmpty)
                     Text(
-                      'No specific SHAP factors provided for this score threshold.',
+                      'No specific risk factors flagged for this score.',
                       style: TextStyle(
                         color: colors.textSecondary,
                         fontSize: 13,

@@ -210,7 +210,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                             color: colors.riskCritical,
                           ),
                           Text(
-                            'Flagged as Suspicious by ML Engine',
+                            'Flagged as Suspicious Transaction',
                             style: TextStyle(
                               color: colors.riskCritical,
                               fontSize: 11,
@@ -360,7 +360,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                       ),
                     ] else
                       Text(
-                        'This transaction was flagged by the ML pipeline. Alert details could not be loaded.',
+                        'This transaction was flagged for investigation. Alert details could not be loaded.',
                         style: TextStyle(color: colors.textMuted, fontSize: 12),
                       ),
                   ],

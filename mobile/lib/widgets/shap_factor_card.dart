@@ -98,7 +98,7 @@ class ShapFactorCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
-                  '+${reason.impact.toStringAsFixed(2)} SHAP',
+                  '+${reason.impact.toStringAsFixed(2)} Risk Impact',
                   style: TextStyle(
                     color: colors.textSecondary,
                     fontSize: 10,

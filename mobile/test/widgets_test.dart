@@ -111,7 +111,7 @@ void main() {
       );
 
       expect(find.text('Spend Amount Anomaly'), findsOneWidget);
-      expect(find.text('+0.45 SHAP'), findsOneWidget);
+      expect(find.text('+0.45 Risk Impact'), findsOneWidget);
       expect(
         find.text('Amount \$950.00 is 3.5x this card average spend'),
         findsOneWidget,

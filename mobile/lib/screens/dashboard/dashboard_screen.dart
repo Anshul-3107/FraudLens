@@ -415,7 +415,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 Text(
-                                  'Live ML Transaction Scoring',
+                                  'Record & Verify Transaction',
                                   style: TextStyle(
                                     color: colors.textPrimary,
                                     fontWeight: FontWeight.w700,
@@ -424,7 +424,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  'Test real-time Isolation Forest + XGBoost inference',
+                                  'Simulate a payment to test real-time fraud detection',
                                   style: TextStyle(
                                     color: colors.textMuted,
                                     fontSize: 12,
@@ -442,10 +442,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     );
                                   },
                                   icon: const Icon(
-                                    Icons.bolt_rounded,
+                                    Icons.add_card_rounded,
                                     size: 16,
                                   ),
-                                  label: const Text('Score Transaction'),
+                                  label: const Text('Record Transaction'),
                                 ),
                               ],
                             );
@@ -458,7 +458,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Live ML Transaction Scoring',
+                                      'Record & Verify Transaction',
                                       style: TextStyle(
                                         color: colors.textPrimary,
                                         fontWeight: FontWeight.w700,
@@ -467,7 +467,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      'Test real-time Isolation Forest + XGBoost inference',
+                                      'Simulate a payment to test real-time fraud detection',
                                       style: TextStyle(
                                         color: colors.textMuted,
                                         fontSize: 12,
@@ -487,8 +487,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     ),
                                   );
                                 },
-                                icon: const Icon(Icons.bolt_rounded, size: 16),
-                                label: const Text('Score Transaction'),
+                                icon: const Icon(Icons.add_card_rounded, size: 16),
+                                label: const Text('Record Transaction'),
                               ),
                             ],
                           );

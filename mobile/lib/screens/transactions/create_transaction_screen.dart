@@ -127,13 +127,13 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
 
     return Scaffold(
       backgroundColor: colors.background,
-      appBar: AppBar(title: const Text('Record & Score Transaction')),
+      appBar: AppBar(title: const Text('Record Transaction')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // ML Inference Banner
+            // Security Protection Banner
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -150,7 +150,7 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(
-                      Icons.auto_awesome_rounded,
+                      Icons.shield_rounded,
                       color: colors.primary,
                       size: 20,
                     ),
@@ -161,7 +161,7 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Live ML Inference Active',
+                          'Real-Time Fraud Protection Active',
                           style: TextStyle(
                             color: colors.textPrimary,
                             fontSize: 13.5,
@@ -170,7 +170,7 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Transactions are scored against card behavior profiles using Isolation Forest, XGBoost, and TreeSHAP explainability.',
+                          'Transactions are automatically analyzed against card spending patterns to detect anomalies in real time.',
                           style: TextStyle(
                             color: colors.textMuted,
                             fontSize: 11.5,
@@ -249,7 +249,7 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
                     if (_result!.scoring.reasons.isNotEmpty) ...[
                       const SizedBox(height: 14),
                       Text(
-                        'SHAP Factor Contributions:',
+                        'Key Risk Contributors:',
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
@@ -355,7 +355,7 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
                               0.0;
                           final usdVal = currencyProvider.convertToUsd(val);
                           return Text(
-                            '≈ \$${usdVal.toStringAsFixed(2)} USD normalized base sent to ML models (1 USD = ${currencyProvider.activeRateFromUsd.toStringAsFixed(2)} ${currencyProvider.activeCurrency})',
+                            '≈ \$${usdVal.toStringAsFixed(2)} USD base equivalent (1 USD = ${currencyProvider.activeRateFromUsd.toStringAsFixed(2)} ${currencyProvider.activeCurrency})',
                             style: TextStyle(
                               color: colors.textMuted,
                               fontSize: 11.5,
@@ -501,8 +501,8 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
                           : const Icon(Icons.bolt_rounded, size: 18),
                       label: Text(
                         _submitting
-                            ? 'Evaluating ML Model...'
-                            : 'Score Transaction with ML',
+                            ? 'Verifying Transaction...'
+                            : 'Verify & Record Transaction',
                       ),
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
