@@ -347,9 +347,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               value: currencyProvider.format(
                                 summary?.totalSpend ?? 0,
                               ),
-                              subtitle: currencyProvider.isConvertedFromUsd
-                                  ? 'Orig: \$${NumberFormat.compact().format(summary?.totalSpend ?? 0)} USD'
-                                  : 'Aggregate transaction spend',
+                              subtitle: (summary?.transactionCount ?? 0) == 0
+                                  ? 'No transactions yet'
+                                  : currencyProvider.isConvertedFromUsd
+                                      ? 'Orig: \$${NumberFormat.compact().format(summary?.totalSpend ?? 0)} USD'
+                                      : 'Aggregate transaction spend',
                               icon: Icons.payments_outlined,
                               iconColor: colors.primary,
                             ),
@@ -358,7 +360,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               value: countFormat.format(
                                 summary?.transactionCount ?? 0,
                               ),
-                              subtitle: 'Processed records',
+                              subtitle: (summary?.transactionCount ?? 0) == 0
+                                  ? 'Awaiting first payment'
+                                  : 'Processed records',
                               icon: Icons.receipt_long_outlined,
                               iconColor: colors.textSecondary,
                               onTap: () => widget.onNavigateTab?.call(1),
@@ -368,7 +372,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               value: countFormat.format(
                                 summary?.alertsByStatus.open ?? 0,
                               ),
-                              subtitle: 'Requiring analyst review',
+                              subtitle: (summary?.alertsByStatus.open ?? 0) == 0
+                                  ? 'All clear'
+                                  : 'Requiring review',
                               icon: Icons.warning_amber_rounded,
                               iconColor: colors.riskCritical,
                               iconBg: colors.riskCriticalBg,
@@ -379,8 +385,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               value: countFormat.format(
                                 summary?.alertsByStatus.resolved ?? 0,
                               ),
-                              subtitle:
-                                  '${summary?.alertsByStatus.inReview ?? 0} in review',
+                              subtitle: (summary?.alertsByStatus.inReview ?? 0) > 0
+                                  ? '${summary?.alertsByStatus.inReview} in review'
+                                  : '0 in review',
                               icon: Icons.verified_user_outlined,
                               iconColor: colors.riskLow,
                               iconBg: colors.riskLowBg,
@@ -390,6 +397,62 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         );
                       },
                     ),
+
+                    // First-time user onboarding banner
+                    if ((summary?.transactionCount ?? 0) == 0) ...[
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: colors.primary.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: colors.primary.withValues(alpha: 0.25),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: colors.primary.withValues(alpha: 0.15),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.auto_awesome_rounded,
+                                color: colors.primary,
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Account Active & Monitoring Ready',
+                                    style: TextStyle(
+                                      color: colors.textPrimary,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'As transactions occur, FraudLens will automatically analyze behavior, detect anomalies, and populate your metrics in real-time.',
+                                    style: TextStyle(
+                                      color: colors.textSecondary,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
 
                     const SizedBox(height: 16),
 

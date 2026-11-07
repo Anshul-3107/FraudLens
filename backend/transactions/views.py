@@ -41,10 +41,15 @@ def get_client_ip(request):
     return request.META.get("REMOTE_ADDR", "unknown")
 
 
-def visible_cards(user):
-    """Staff see every card; everyone else only their own."""
-    cards = Card.objects.all()
-    return cards if user.is_staff else cards.filter(owner=user)
+def visible_cards(user, request=None):
+    """Users only ever see cards that they explicitly own.
+    Staff can see all cards only if query parameter `all_cards=true` is explicitly requested.
+    """
+    if not user or not user.is_authenticated:
+        return Card.objects.none()
+    if user.is_staff and request and request.query_params.get("all_cards", "").lower() == "true":
+        return Card.objects.all()
+    return Card.objects.filter(owner=user)
 
 
 def param_int(params, key):
