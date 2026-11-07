@@ -19,7 +19,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from .ingest import ingest_transaction
-from .models import Alert, Card, Investigation, PhoneVerification, Transaction
+from .models import Alert, Card, Investigation, PhoneVerification, Transaction, UserBehaviorProfile
 from .permissions import IsOwnerOrStaff
 from .sms_service import generate_otp_code, hash_otp, send_live_sms
 from .serializers import (
@@ -319,6 +319,28 @@ class CardViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         return visible_cards(self.request.user).order_by("id")
 
+    @action(detail=True, methods=["get"])
+    def behavior_profile(self, request, pk=None):
+        """Returns the personalized behavioral profile statistics for the card."""
+        card = self.get_object()
+        profile, _ = UserBehaviorProfile.objects.get_or_create(card=card)
+        return Response({
+            "card_id": card.id,
+            "card_label": card.label,
+            "total_txns": profile.total_txns,
+            "graduation_phase": profile.graduation_phase,
+            "is_model_trained": profile.is_model_trained,
+            "avg_amount": round(profile.avg_amount, 2),
+            "std_amount": round(profile.std_amount, 2),
+            "min_amount": round(profile.min_amount, 2),
+            "max_amount": round(profile.max_amount, 2),
+            "top_categories": profile.top_categories,
+            "frequent_merchants": profile.frequent_merchants,
+            "active_hours": profile.active_hours,
+            "active_days": profile.active_days,
+            "last_trained_at": profile.last_trained_at,
+        })
+
 
 class TransactionViewSet(
     mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.CreateModelMixin,
@@ -388,15 +410,22 @@ class TransactionViewSet(
                 raise ValidationError({"trans_ref": "A transaction with this reference already exists."})
             raise
         txn.has_alert = alert is not None
+        scoring_resp = {
+            "score": round(result["score"], 6),
+            "flagged": result["flagged"],
+            "threshold": result["threshold"],
+            "reasons": result["reasons"],
+        }
+        if "graduation_phase" in result:
+            scoring_resp["graduation_phase"] = result["graduation_phase"]
+            scoring_resp["weights"] = result.get("weights")
+            scoring_resp["global_score"] = round(result.get("global_score", result["score"]), 6)
+            scoring_resp["personal_score"] = round(result.get("personal_score", 0.0), 6)
+
         return Response(
             {
                 "transaction": TransactionSerializer(txn).data,
-                "scoring": {
-                    "score": round(result["score"], 6),
-                    "flagged": result["flagged"],
-                    "threshold": result["threshold"],
-                    "reasons": result["reasons"],
-                },
+                "scoring": scoring_resp,
                 "alert_id": alert.id if alert else None,
             },
             status=status.HTTP_201_CREATED,

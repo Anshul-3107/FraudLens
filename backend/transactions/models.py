@@ -123,3 +123,32 @@ class Investigation(models.Model):
 
     def __str__(self):
         return f"{self.get_verdict_display()} on alert {self.alert_id}"
+
+
+class UserBehaviorProfile(models.Model):
+    """Stores personalized behavioral statistics and trained isolation model per card.
+
+    Enables progressive graduation:
+    - Phase 1 (Txn 1-15): 100% Pretrained Global Model.
+    - Phase 2 (Txn 16-50): 85% Global + 15% Early Behavioral Drift.
+    - Phase 3 (Txn 51-100): 50% Global + 50% Personal Isolation Forest.
+    - Phase 4 (Txn 101+): 30% Global + 70% Mature Personal Model.
+    """
+    card = models.OneToOneField(Card, on_delete=models.CASCADE, related_name="behavior_profile")
+    total_txns = models.IntegerField(default=0)
+    avg_amount = models.FloatField(default=0.0)
+    std_amount = models.FloatField(default=1.0)
+    min_amount = models.FloatField(default=0.0)
+    max_amount = models.FloatField(default=0.0)
+    top_categories = models.JSONField(default=list)  # list of top category codes/names
+    frequent_merchants = models.JSONField(default=list)  # list of frequent merchant strings
+    active_hours = models.JSONField(default=list)  # list of active transaction hours [0..23]
+    active_days = models.JSONField(default=list)  # [0..6]
+    is_model_trained = models.BooleanField(default=False)
+    model_artifact_path = models.CharField(max_length=255, blank=True)
+    graduation_phase = models.IntegerField(default=1)  # 1, 2, 3, or 4
+    last_trained_at = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"BehaviorProfile for {self.card.label} (txns={self.total_txns}, phase={self.graduation_phase})"

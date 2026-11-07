@@ -242,7 +242,9 @@ def compute_features(*, card, occurred_at, merchant, category, amount, merch_lat
 
 
 def score_transaction(*, card, occurred_at, merchant, category, amount, merch_lat=None, merch_long=None):
-    """Return {"score", "flagged", "threshold", "reasons", "features"} for one transaction."""
+    """Return {"score", "flagged", "threshold", "reasons", "features", "personal_profile"} for one transaction."""
+    from .personal_ml_service import score_personal_transaction
+
     bundle = get_bundle()
     feats = compute_features(
         card=card, occurred_at=occurred_at, merchant=merchant, category=category,
@@ -252,11 +254,26 @@ def score_transaction(*, card, occurred_at, merchant, category, amount, merch_la
     if bundle.model_mode == "ensemble":
         row["iso_score"] = -bundle.iso.score_samples(row[bundle.if_cols])
     X = row[bundle.xgb_cols]
-    score = float(bundle.model.predict_proba(X)[0, 1])
-    flagged = score >= bundle.threshold
+    global_score = float(bundle.model.predict_proba(X)[0, 1])
+
+    # Blend with personal adaptive behavioral profile
+    personal_eval = score_personal_transaction(card, feats, global_score)
+    final_score = personal_eval["final_score"]
+
+    flagged = final_score >= bundle.threshold
     reasons = bundle.explain.explain(bundle.model, X)[0] if flagged else []
+    if flagged and personal_eval.get("personal_reasons"):
+        reasons = list(reasons) + personal_eval["personal_reasons"]
+
     return {
-        "score": score,
+        "score": final_score,
+        "global_score": global_score,
+        "personal_score": personal_eval["personal_score"],
+        "graduation_phase": personal_eval["phase"],
+        "weights": {
+            "global": personal_eval["global_weight"],
+            "personal": personal_eval["personal_weight"],
+        },
         "flagged": flagged,
         "threshold": bundle.threshold,
         "reasons": reasons,

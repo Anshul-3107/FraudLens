@@ -53,4 +53,20 @@ def ingest_transaction(
         prod_latency_ms=prod_latency_ms,
     )
 
-    return txn, alert, result
+    # Update personal behavior profile statistics online
+    try:
+        from .personal_ml_service import update_behavior_profile_online
+        update_behavior_profile_online(
+            card=card,
+            amount=amount,
+            occurred_at=occurred_at,
+            merchant=merchant,
+            category=category,
+        )
+    except Exception as e:
+        import logging
+        logging.getLogger("fraudlens.personal_ml").warning(
+            "Failed updating behavioral profile for card %s: %s", card.id, e
+        )
+
+    return txn, alert, result
