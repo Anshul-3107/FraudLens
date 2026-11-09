@@ -102,3 +102,23 @@ class NotificationRoutingTests(TestCase):
 
         # Assert only ONE transaction exists in database
         self.assertEqual(Transaction.objects.filter(amount=500.0).count(), 1)
+
+    def test_money_received_credit_transaction(self):
+        payload = {
+            "amount": 100.0,
+            "merchant": "Rajesh Arohi",
+            "category": "misc_pos",
+            "last4": "9719",
+            "bank_name": "HDFC Bank",
+            "package_name": "com.google.android.apps.nbu.paisa.user",
+            "txn_type": "received",
+            "currency": "INR",
+        }
+        resp = self.client.post("/api/transactions/process_notification/", payload)
+        self.assertEqual(resp.status_code, 201)
+        data = resp.data
+
+        self.assertEqual(data["transaction"]["txn_type"], "received")
+        self.assertEqual(data["transaction"]["currency"], "INR")
+        self.assertEqual(data["scoring"]["status_label"], "Money Received")
+        self.assertEqual(data["scoring"]["card_color"], "green")

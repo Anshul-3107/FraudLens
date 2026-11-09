@@ -141,29 +141,29 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                     child: Icon(
                       txn.hasAlert
                           ? Icons.warning_rounded
-                          : Icons.storefront_rounded,
+                          : (txn.isReceived ? Icons.south_west_rounded : Icons.north_east_rounded),
                       size: 28,
                       color: txn.hasAlert
                           ? colors.riskCritical
-                          : colors.primary,
+                          : (txn.isReceived ? const Color(0xFF10B981) : colors.primary),
                     ),
                   ),
                   const SizedBox(height: 12),
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(
-                      currencyProvider.format(txn.amount),
+                      '${txn.isReceived ? '+' : '-'}${currencyProvider.format(txn.amount, isSourceUsd: txn.isSourceUsd)}',
                       style: TextStyle(
                         color: txn.hasAlert
                             ? colors.riskCritical
-                            : colors.textPrimary,
+                            : (txn.isReceived ? const Color(0xFF10B981) : colors.textPrimary),
                         fontSize: 28,
                         fontWeight: FontWeight.w700,
                         letterSpacing: -0.5,
                       ),
                     ),
                   ),
-                  if (currencyProvider.isConvertedFromUsd) ...[
+                  if (txn.isSourceUsd && currencyProvider.isConvertedFromUsd) ...[
                     const SizedBox(height: 4),
                     Text(
                       'Original: \$${txn.amount.toStringAsFixed(2)} USD • Rate: 1 USD = ${currencyProvider.activeRateFromUsd.toStringAsFixed(2)} ${currencyProvider.activeCurrency}',
@@ -177,7 +177,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                   ],
                   const SizedBox(height: 6),
                   Text(
-                    txn.merchant,
+                    txn.isReceived ? 'From: ${txn.merchant}' : txn.merchant,
                     style: TextStyle(
                       color: colors.textSecondary,
                       fontSize: 14,
@@ -186,7 +186,46 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 10),
-                  if (txn.hasAlert)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: txn.isReceived
+                              ? const Color(0xFF10B981).withValues(alpha: 0.15)
+                              : colors.surfaceSubtle,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: txn.isReceived
+                                ? const Color(0xFF10B981).withValues(alpha: 0.35)
+                                : colors.borderSubtle,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              txn.isReceived ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded,
+                              size: 13,
+                              color: txn.isReceived ? const Color(0xFF10B981) : colors.textSecondary,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              txn.isReceived ? 'Money Received' : 'Money Sent',
+                              style: TextStyle(
+                                color: txn.isReceived ? const Color(0xFF10B981) : colors.textSecondary,
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (txn.hasAlert) ...[
+                    const SizedBox(height: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 10,
@@ -220,6 +259,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                         ],
                       ),
                     ),
+                  ],
                 ],
               ),
             ),
@@ -248,6 +288,16 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                   const SizedBox(height: 8),
                   Divider(color: colors.borderSubtle),
                   _buildDetailRow(context, 'Transaction ID', '#${txn.id}'),
+                  _buildDetailRow(
+                    context,
+                    'Type',
+                    txn.isReceived ? 'Money Received (Credit)' : 'Money Sent (Debit)',
+                  ),
+                  _buildDetailRow(
+                    context,
+                    txn.isReceived ? 'Received From' : 'Merchant',
+                    txn.merchant,
+                  ),
                   _buildDetailRow(
                     context,
                     'Reference',

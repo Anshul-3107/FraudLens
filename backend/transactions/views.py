@@ -520,6 +520,9 @@ class TransactionViewSet(
         merch_long = request.data.get("merch_long")
         source_type = request.data.get("source", "notification").lower()
         txn_source = Transaction.Source.SMS if source_type == "sms" else Transaction.Source.NOTIFICATION
+        raw_txn_type = request.data.get("txn_type", "sent").lower()
+        txn_type = Transaction.TxnType.RECEIVED if raw_txn_type == "received" else Transaction.TxnType.SENT
+        currency = str(request.data.get("currency", "INR")).upper()
 
         # -------------------------------------------------------------
         # Deduplication Window (Idempotency Check)
@@ -549,10 +552,15 @@ class TransactionViewSet(
                 existing_txn.amount,
                 txn_source,
             )
+            if raw_txn_type == "received" and existing_txn.txn_type != Transaction.TxnType.RECEIVED:
+                existing_txn.txn_type = Transaction.TxnType.RECEIVED
+                existing_txn.save(update_fields=["txn_type"])
+
             has_alert = Alert.objects.filter(transaction=existing_txn).exists()
             existing_alert = Alert.objects.filter(transaction=existing_txn).first()
             score = existing_alert.score if existing_alert else 0.05
             flagged = has_alert
+            status_lbl = "Needs Action" if flagged else ("Money Received" if existing_txn.txn_type == Transaction.TxnType.RECEIVED else "Safe")
 
             return Response(
                 {
@@ -566,7 +574,7 @@ class TransactionViewSet(
                         "is_duplicate_enriched": True,
                         "routing_destination": "review" if flagged else "history",
                         "card_color": "red" if flagged else "green",
-                        "status_label": "Needs Action" if flagged else "Safe",
+                        "status_label": status_lbl,
                     },
                     "alert_id": existing_alert.id if existing_alert else None,
                 },
@@ -582,9 +590,12 @@ class TransactionViewSet(
             merch_lat=float(merch_lat) if merch_lat is not None else None,
             merch_long=float(merch_long) if merch_long is not None else None,
             source=txn_source,
+            currency=currency,
+            txn_type=txn_type,
         )
 
         txn.has_alert = alert is not None
+        status_lbl = "Needs Action" if result["flagged"] else ("Money Received" if txn_type == Transaction.TxnType.RECEIVED else "Safe")
         scoring_resp = {
             "score": round(result["score"], 6),
             "flagged": result["flagged"],
@@ -594,7 +605,7 @@ class TransactionViewSet(
             "is_duplicate_enriched": False,
             "routing_destination": "review" if result["flagged"] else "history",
             "card_color": "red" if result["flagged"] else "green",
-            "status_label": "Needs Action" if result["flagged"] else "Safe",
+            "status_label": status_lbl,
         }
 
         return Response(
@@ -703,8 +714,12 @@ class SummaryView(APIView):
             Alert.objects.filter(transaction__in=txns).values("status").annotate(count=Count("id"))
         )
 
+        has_local = txns.filter(source__in=[Transaction.Source.NOTIFICATION, Transaction.Source.SMS]).exists()
+        primary_currency = "INR" if has_local else "USD"
+
         return Response({
             "total_spend": float(totals["total"] or 0),
+            "currency": primary_currency,
             "transaction_count": totals["count"],
             "alerts_by_status": {row["status"]: row["count"] for row in alert_status},
             "by_category": [

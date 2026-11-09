@@ -64,6 +64,10 @@ class Transaction(models.Model):
         SHOPPING_POS = "shopping_pos"
         TRAVEL = "travel"
 
+    class TxnType(models.TextChoices):
+        SENT = "sent", "Money Sent"
+        RECEIVED = "received", "Money Received"
+
     trans_ref = models.CharField(max_length=64, unique=True)
     card = models.ForeignKey(Card, on_delete=models.CASCADE, related_name="transactions")
     occurred_at = models.DateTimeField(db_index=True)
@@ -73,6 +77,8 @@ class Transaction(models.Model):
     merch_lat = models.FloatField(null=True, blank=True)
     merch_long = models.FloatField(null=True, blank=True)
     source = models.CharField(max_length=20, choices=Source.choices, default=Source.SIMULATED)
+    currency = models.CharField(max_length=10, default="INR")
+    txn_type = models.CharField(max_length=10, choices=TxnType.choices, default=TxnType.SENT)
     # Ground truth. Only the simulated dataset has it; real data would not.
     is_fraud_label = models.BooleanField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

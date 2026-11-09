@@ -283,11 +283,11 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
                     _buildDetailRow(
                       context,
                       'Amount',
-                      currencyProvider.format(txn.amount),
+                      currencyProvider.format(txn.amount, isSourceUsd: txn.isSourceUsd),
                       valueColor: colors.riskCritical,
                       fontWeight: FontWeight.w700,
                     ),
-                    if (currencyProvider.isConvertedFromUsd) ...[
+                    if (txn.isSourceUsd && currencyProvider.isConvertedFromUsd) ...[
                       Padding(
                         padding: const EdgeInsets.only(bottom: 6),
                         child: Row(

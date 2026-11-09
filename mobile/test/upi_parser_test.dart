@@ -81,6 +81,65 @@ void main() {
       expect(parsed.inferredCategory, 'grocery_pos');
     });
 
+    test('Parses Google Pay Money Received notification from father', () {
+      const pkg = 'com.google.android.apps.nbu.paisa.user';
+      const title = 'Google Pay';
+      const text = 'Received ₹100 from Rajesh Arohi';
+
+      final parsed = UpiParser.parse(
+        packageName: pkg,
+        title: title,
+        text: text,
+      );
+
+      expect(parsed, isNotNull);
+      expect(parsed!.amount, 100.00);
+      expect(parsed.merchant, 'Rajesh Arohi');
+      expect(parsed.txnType, 'received');
+      expect(parsed.isReceived, isTrue);
+      expect(parsed.currency, 'INR');
+    });
+
+    test('Parses PhonePe Money Received notification format (Father sent you ₹100)', () {
+      const pkg = 'com.phonepe.app';
+      const title = 'PhonePe';
+      const text = 'Rajesh Arohi sent you ₹100';
+
+      final parsed = UpiParser.parse(
+        packageName: pkg,
+        title: title,
+        text: text,
+      );
+
+      expect(parsed, isNotNull);
+      expect(parsed!.amount, 100.00);
+      expect(parsed.merchant, 'Rajesh Arohi');
+      expect(parsed.txnType, 'received');
+      expect(parsed.isReceived, isTrue);
+    });
+
+    test('Parses official HDFC Bank SMS Money Received (Credit) format', () {
+      const sender = 'VK-HDFCBK';
+      const text =
+          'Alert: INR 100.00 credited to HDFC Bank A/c ending 9719 on 09-NOV-26 by RAJESH AROHI. Bal: INR 15,340.00';
+
+      final parsed = UpiParser.parse(
+        packageName: 'android.telephony.sms',
+        title: sender,
+        text: text,
+        source: 'sms',
+      );
+
+      expect(parsed, isNotNull);
+      expect(parsed!.amount, 100.00);
+      expect(parsed.merchant, 'RAJESH AROHI');
+      expect(parsed.last4, '9719');
+      expect(parsed.bankName, 'HDFC Bank');
+      expect(parsed.txnType, 'received');
+      expect(parsed.isReceived, isTrue);
+      expect(parsed.source, 'sms');
+    });
+
     test('Ignores non-payment notification', () {
       const pkg = 'com.google.android.apps.nbu.paisa.user';
       const title = 'Google Pay';

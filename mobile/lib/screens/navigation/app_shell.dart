@@ -72,6 +72,8 @@ class _AppShellState extends State<AppShell> {
         bankName: upiPayment.bankName,
         packageName: upiPayment.packageName,
         source: upiPayment.source,
+        txnType: upiPayment.txnType,
+        currency: upiPayment.currency,
       );
 
       final scoring = res['scoring'] as Map<String, dynamic>? ?? {};
@@ -87,6 +89,7 @@ class _AppShellState extends State<AppShell> {
       if (!mounted) return;
 
       final sourceLabel = upiPayment.source == 'sms' ? 'Bank SMS' : 'UPI Notification';
+      final bool isReceived = upiPayment.isReceived;
 
       // Smart Visual Routing Notification SnackBar
       ScaffoldMessenger.of(context).showSnackBar(
@@ -98,7 +101,9 @@ class _AppShellState extends State<AppShell> {
           content: Row(
             children: [
               Icon(
-                isFlagged ? Icons.warning_rounded : Icons.check_circle_rounded,
+                isFlagged
+                    ? Icons.warning_rounded
+                    : (isReceived ? Icons.south_west_rounded : Icons.check_circle_rounded),
                 color: Colors.white,
                 size: 24,
               ),
@@ -113,7 +118,9 @@ class _AppShellState extends State<AppShell> {
                           ? 'Verified by $sourceLabel: Safe'
                           : isFlagged
                               ? 'Needs Action: Suspicious Transaction'
-                              : 'Captured via $sourceLabel: Safe',
+                              : (isReceived
+                                  ? 'Money Received ($sourceLabel)'
+                                  : 'Captured via $sourceLabel: Safe'),
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 13.5,
@@ -121,9 +128,13 @@ class _AppShellState extends State<AppShell> {
                       ),
                     ),
                     Text(
-                      '₹${upiPayment.amount.toStringAsFixed(2)} at ${upiPayment.merchant}'
-                      '${!isRegistered ? " • Unregistered Account" : ""}'
-                      '${isEnriched ? " (Deduplicated)" : ""}',
+                      isReceived
+                          ? '₹${upiPayment.amount.toStringAsFixed(2)} received from ${upiPayment.merchant}'
+                              '${!isRegistered ? " • Unregistered Account" : ""}'
+                              '${isEnriched ? " (Deduplicated)" : ""}'
+                          : '₹${upiPayment.amount.toStringAsFixed(2)} sent to ${upiPayment.merchant}'
+                              '${!isRegistered ? " • Unregistered Account" : ""}'
+                              '${isEnriched ? " (Deduplicated)" : ""}',
                       style: const TextStyle(fontSize: 12, color: Colors.white),
                     ),
                   ],

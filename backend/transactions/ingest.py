@@ -12,6 +12,7 @@ def ingest_transaction(
     *, card, occurred_at, merchant, category, amount,
     merch_lat=None, merch_long=None,
     source=Transaction.Source.UPLOAD, trans_ref=None, is_fraud_label=None,
+    currency="INR", txn_type=Transaction.TxnType.SENT,
 ):
     """Score a new transaction, store it, and raise an alert if it is flagged.
     Returns (transaction, alert_or_None, scoring_result)."""
@@ -34,6 +35,8 @@ def ingest_transaction(
             merch_lat=merch_lat,
             merch_long=merch_long,
             source=source,
+            currency=currency,
+            txn_type=txn_type,
             is_fraud_label=is_fraud_label,
         )
         alert = None

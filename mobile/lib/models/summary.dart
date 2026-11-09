@@ -66,6 +66,7 @@ class SummaryModel {
   final AlertsByStatus alertsByStatus;
   final List<CategorySpend> byCategory;
   final List<MonthlySpend> monthly;
+  final String currency;
 
   SummaryModel({
     required this.totalSpend,
@@ -73,7 +74,10 @@ class SummaryModel {
     required this.alertsByStatus,
     required this.byCategory,
     required this.monthly,
+    this.currency = 'USD',
   });
+
+  bool get isSourceUsd => currency.toUpperCase() == 'USD';
 
   factory SummaryModel.fromJson(Map<String, dynamic> json) {
     final alertsMap = json['alerts_by_status'] as Map<String, dynamic>? ?? {};
@@ -82,6 +86,7 @@ class SummaryModel {
 
     return SummaryModel(
       totalSpend: (json['total_spend'] as num?)?.toDouble() ?? 0.0,
+      currency: json['currency'] as String? ?? 'USD',
       transactionCount: json['transaction_count'] as int? ?? 0,
       alertsByStatus: AlertsByStatus.fromJson(alertsMap),
       byCategory: catList

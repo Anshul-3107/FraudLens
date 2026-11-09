@@ -11,6 +11,8 @@ class TransactionModel {
   final double amount;
   final String source;
   final bool hasAlert;
+  final String txnType;
+  final String currency;
 
   TransactionModel({
     required this.id,
@@ -23,9 +25,19 @@ class TransactionModel {
     required this.amount,
     required this.source,
     required this.hasAlert,
-  });
+    this.txnType = 'sent',
+    String? currency,
+  }) : currency = currency ?? (source == 'simulated' ? 'USD' : 'INR');
+
+  bool get isReceived => txnType.toLowerCase() == 'received';
+  bool get isSent => !isReceived;
+  bool get isSourceUsd => (currency.toUpperCase() == 'USD' && source == 'simulated');
 
   factory TransactionModel.fromJson(Map<String, dynamic> json) {
+    final src = json['source'] as String? ?? 'simulated';
+    final rawType = json['txn_type'] as String? ?? 'sent';
+    final rawCurr = json['currency'] as String? ?? (src == 'simulated' ? 'USD' : 'INR');
+
     return TransactionModel(
       id: json['id'] as int? ?? 0,
       transRef: json['trans_ref'] as String? ?? '',
@@ -37,8 +49,10 @@ class TransactionModel {
       merchant: json['merchant'] as String? ?? '',
       category: json['category'] as String? ?? '',
       amount: _parseDouble(json['amount']),
-      source: json['source'] as String? ?? 'simulated',
+      source: src,
       hasAlert: json['has_alert'] as bool? ?? false,
+      txnType: rawType,
+      currency: rawCurr,
     );
   }
 
@@ -64,6 +78,8 @@ class TransactionModel {
     'amount': amount.toStringAsFixed(2),
     'source': source,
     'has_alert': hasAlert,
+    'txn_type': txnType,
+    'currency': currency,
   };
 }
 

@@ -72,6 +72,8 @@ class TransactionService {
     required String bankName,
     required String packageName,
     String source = 'notification',
+    String txnType = 'sent',
+    String currency = 'INR',
   }) async {
     final body = <String, dynamic>{
       'amount': amount,
@@ -81,6 +83,8 @@ class TransactionService {
       'bank_name': bankName,
       'package_name': packageName,
       'source': source,
+      'txn_type': txnType,
+      'currency': currency,
     };
     final response = await _client.post(
       ApiConfig.processNotificationUrl,

@@ -56,18 +56,30 @@ class TransactionCard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: isFlagged
                     ? const Color(0xFFEF4444).withValues(alpha: 0.20)
-                    : const Color(0xFF10B981).withValues(alpha: 0.16),
+                    : (transaction.isReceived
+                        ? const Color(0xFF10B981).withValues(alpha: 0.20)
+                        : colors.surfaceSubtle),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
                   color: isFlagged
                       ? const Color(0xFFEF4444).withValues(alpha: 0.35)
-                      : const Color(0xFF10B981).withValues(alpha: 0.30),
+                      : (transaction.isReceived
+                          ? const Color(0xFF10B981).withValues(alpha: 0.40)
+                          : colors.borderSubtle),
                 ),
               ),
               child: Icon(
-                isFlagged ? Icons.warning_rounded : Icons.check_circle_rounded,
+                isFlagged
+                    ? Icons.warning_rounded
+                    : (transaction.isReceived
+                        ? Icons.south_west_rounded
+                        : Icons.north_east_rounded),
                 size: 20,
-                color: statusTextColor,
+                color: isFlagged
+                    ? const Color(0xFFEF4444)
+                    : (transaction.isReceived
+                        ? const Color(0xFF10B981)
+                        : colors.textSecondary),
               ),
             ),
             const SizedBox(width: 12),
@@ -92,7 +104,7 @@ class TransactionCard extends StatelessWidget {
                         ),
                       ),
                       if (isFlagged) ...[
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 4),
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 6,
@@ -116,7 +128,7 @@ class TransactionCard extends StatelessWidget {
                           ),
                         ),
                       ] else ...[
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 4),
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 6,
@@ -144,10 +156,54 @@ class TransactionCard extends StatelessWidget {
                   const SizedBox(height: 3),
                   Row(
                     children: [
+                      // Direction Badge (Money Received vs Money Sent)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 1,
+                        ),
+                        margin: const EdgeInsets.only(right: 5),
+                        decoration: BoxDecoration(
+                          color: transaction.isReceived
+                              ? const Color(0xFF10B981).withValues(alpha: 0.16)
+                              : colors.surfaceSubtle,
+                          borderRadius: BorderRadius.circular(3),
+                          border: Border.all(
+                            color: transaction.isReceived
+                                ? const Color(0xFF10B981).withValues(alpha: 0.35)
+                                : colors.borderSubtle,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              transaction.isReceived
+                                  ? Icons.arrow_downward_rounded
+                                  : Icons.arrow_upward_rounded,
+                              size: 9,
+                              color: transaction.isReceived
+                                  ? const Color(0xFF10B981)
+                                  : colors.textSecondary,
+                            ),
+                            const SizedBox(width: 2),
+                            Text(
+                              transaction.isReceived ? 'RECEIVED' : 'SENT',
+                              style: TextStyle(
+                                color: transaction.isReceived
+                                    ? const Color(0xFF10B981)
+                                    : colors.textSecondary,
+                                fontSize: 8.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                       if (isUnregistered) ...[
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                          margin: const EdgeInsets.only(right: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                          margin: const EdgeInsets.only(right: 5),
                           decoration: BoxDecoration(
                             color: colors.surfaceSubtle,
                             borderRadius: BorderRadius.circular(3),
@@ -180,7 +236,7 @@ class TransactionCard extends StatelessWidget {
 
             // Amount and Category
             ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 105),
+              constraints: const BoxConstraints(maxWidth: 100),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 mainAxisSize: MainAxisSize.min,
@@ -189,9 +245,13 @@ class TransactionCard extends StatelessWidget {
                     fit: BoxFit.scaleDown,
                     alignment: Alignment.centerRight,
                     child: Text(
-                      currencyProvider.format(transaction.amount),
+                      '${transaction.isReceived ? '+' : ''}${currencyProvider.format(transaction.amount, isSourceUsd: transaction.isSourceUsd)}',
                       style: TextStyle(
-                        color: statusTextColor,
+                        color: isFlagged
+                            ? const Color(0xFFEF4444)
+                            : (transaction.isReceived
+                                ? const Color(0xFF10B981)
+                                : statusTextColor),
                         fontSize: 14.5,
                         fontWeight: FontWeight.w700,
                       ),

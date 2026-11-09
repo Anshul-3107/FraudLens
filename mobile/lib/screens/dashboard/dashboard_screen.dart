@@ -346,10 +346,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               title: 'Total Volume',
                               value: currencyProvider.format(
                                 summary?.totalSpend ?? 0,
+                                isSourceUsd: summary?.isSourceUsd ?? false,
                               ),
                               subtitle: (summary?.transactionCount ?? 0) == 0
                                   ? 'No transactions yet'
-                                  : currencyProvider.isConvertedFromUsd
+                                  : ((summary?.isSourceUsd ?? false) && currencyProvider.isConvertedFromUsd)
                                       ? 'Orig: \$${NumberFormat.compact().format(summary?.totalSpend ?? 0)} USD'
                                       : 'Aggregate transaction spend',
                               icon: Icons.payments_outlined,

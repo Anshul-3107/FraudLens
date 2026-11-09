@@ -506,6 +506,7 @@ class _AlertsListScreenState extends State<AlertsListScreen> {
                                         child: Text(
                                           currencyProvider.format(
                                             txn?.amount ?? 0,
+                                            isSourceUsd: txn?.isSourceUsd ?? true,
                                           ),
                                           style: TextStyle(
                                             color: colors.textPrimary,

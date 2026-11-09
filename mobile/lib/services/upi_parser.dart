@@ -1,4 +1,4 @@
-/// Parses UPI debit notifications and official Bank SMS debits.
+/// Parses UPI debit notifications, credit (money received) notifications, and official Bank SMS messages.
 class ParsedUpiNotification {
   final double amount;
   final String merchant;
@@ -7,6 +7,8 @@ class ParsedUpiNotification {
   final String packageName;
   final String inferredCategory;
   final String source; // 'notification' or 'sms'
+  final String txnType; // 'sent' or 'received'
+  final String currency; // 'INR'
 
   const ParsedUpiNotification({
     required this.amount,
@@ -16,23 +18,38 @@ class ParsedUpiNotification {
     required this.packageName,
     this.inferredCategory = 'misc_pos',
     this.source = 'notification',
+    this.txnType = 'sent',
+    this.currency = 'INR',
   });
+
+  bool get isReceived => txnType == 'received';
+  bool get isSent => txnType == 'sent';
 }
 
 class UpiParser {
-  // Regex patterns for Indian UPI and Bank SMS payment debit notifications:
+  // Regex patterns for Indian UPI and Bank SMS payment notifications (Debit & Credit):
   // e.g. "Paid Rs. 500 to Starbucks"
+  // e.g. "Received ₹100 from Rajesh Arohi"
+  // e.g. "Rajesh Arohi sent you ₹100"
+  // e.g. "INR 100.00 credited to HDFC Bank A/c ending 9719 on 09-NOV-26 by RAJESH AROHI"
   // e.g. "Rs 1,250 debited from A/c XX9719 at Starbucks"
-  // e.g. "Sent Rs. 350 to Swiggy using HDFC Bank •• 9719"
-  // e.g. "Debited INR 450.00 from your SBI account ... to Zomato"
-  // e.g. "Alert: INR 500.00 debited from HDFC Bank A/c ending 9719 on 09-NOV-26 to STARBUCKS. Bal: INR 12,450.00"
   static final RegExp _amountRegex = RegExp(
-    r'(?:Rs\.?|INR|₹)\s*([\d,]+(?:\.\d{1,2})?)|(?:debited by|paid|spent)\s*(?:Rs\.?|INR|₹)?\s*([\d,]+(?:\.\d{1,2})?)',
+    r'(?:Rs\.?|INR|₹)\s*([\d,]+(?:\.\d{1,2})?)|(?:debited by|debited with|credited by|credited with|paid|spent|received)\s*(?:Rs\.?|INR|₹)?\s*([\d,]+(?:\.\d{1,2})?)',
     caseSensitive: false,
   );
 
   static final RegExp _merchantRegex = RegExp(
     r'(?:to|at|for|paid to|sent to|spent at)\s+([A-Za-z0-9\s&.\-_]+?)(?:\s+(?:using|from|via|on|ref|upi|txn|bal|avail)|$|\.)',
+    caseSensitive: false,
+  );
+
+  static final RegExp _senderReceivedRegex = RegExp(
+    r'(?:from|by|received from|transfer from)\s+([A-Za-z0-9\s&.\-_/@]+?)(?:\s+(?:using|via|on|ref|upi|txn|bal|avail|balance)|\.|$)',
+    caseSensitive: false,
+  );
+
+  static final RegExp _sentYouRegex = RegExp(
+    r'([A-Za-z0-9\s&.\-_]+?)\s+sent\s+(?:you\s+)?(?:Rs\.?|INR|₹)',
     caseSensitive: false,
   );
 
@@ -46,6 +63,16 @@ class UpiParser {
     caseSensitive: false,
   );
 
+  static String _cleanSenderName(String name) {
+    var cleaned = name.trim();
+    cleaned = cleaned.replaceAll(RegExp(r'[\s.,;:\-_]+$'), '');
+    cleaned = cleaned.replaceAll(
+      RegExp(r'^(?:PhonePe|Google Pay|GPay|Paytm|Alert:?|Dear Customer,?)\s*', caseSensitive: false),
+      '',
+    );
+    return cleaned.trim();
+  }
+
   static ParsedUpiNotification? parse({
     required String packageName,
     required String title,
@@ -53,6 +80,7 @@ class UpiParser {
     String source = 'notification',
   }) {
     final combined = '$title $text';
+    final lowerCombined = combined.toLowerCase();
 
     // 1. Amount Extraction
     final amtMatch = _amountRegex.firstMatch(combined);
@@ -64,28 +92,75 @@ class UpiParser {
     final cleanAmt = double.tryParse(rawAmtStr.replaceAll(',', ''));
     if (cleanAmt == null || cleanAmt <= 0) return null;
 
-    // 2. Merchant Extraction
-    String merchant = 'UPI Merchant';
-    final merchMatch = _merchantRegex.firstMatch(combined);
-    if (merchMatch != null) {
-      final candidate = merchMatch.group(1)?.trim();
-      if (candidate != null &&
-          candidate.length >= 2 &&
-          !candidate.toLowerCase().contains('account') &&
-          !candidate.toLowerCase().contains('bank') &&
-          !candidate.toLowerCase().contains('ending')) {
-        merchant = candidate;
+    // 2. Transaction Direction: Money Received (Credit) vs Money Sent (Debit)
+    bool isReceived = false;
+    if (lowerCombined.contains('received') ||
+        lowerCombined.contains('credited') ||
+        lowerCombined.contains('sent you') ||
+        lowerCombined.contains('transferred to you') ||
+        lowerCombined.contains('deposited') ||
+        lowerCombined.contains('refunded') ||
+        lowerCombined.contains('cashback') ||
+        lowerCombined.contains('cr.') ||
+        lowerCombined.contains('cr ') ||
+        lowerCombined.contains(' credited') ||
+        lowerCombined.contains('has been credited')) {
+      isReceived = true;
+    }
+
+    final txnType = isReceived ? 'received' : 'sent';
+
+    // 3. Sender / Merchant Extraction
+    String merchant = isReceived ? 'Sender' : 'UPI Merchant';
+    if (isReceived) {
+      final sentMatch = _sentYouRegex.firstMatch(text) ?? _sentYouRegex.firstMatch(combined);
+      if (sentMatch != null) {
+        String cand = sentMatch.group(1)?.trim() ?? '';
+        cand = _cleanSenderName(cand);
+        if (cand.length >= 2) {
+          merchant = cand;
+        }
+      } else {
+        final recMatch = _senderReceivedRegex.firstMatch(combined);
+        if (recMatch != null) {
+          String cand = recMatch.group(1)?.trim() ?? '';
+          if (cand.toUpperCase().startsWith('UPI/') || cand.toUpperCase().startsWith('VPA/')) {
+            final parts = cand.split('/');
+            cand = parts.last.trim();
+          }
+          cand = _cleanSenderName(cand);
+          if (cand.length >= 2 &&
+              !cand.toLowerCase().contains('account') &&
+              !cand.toLowerCase().contains('bank') &&
+              !cand.toLowerCase().contains('ending')) {
+            merchant = cand;
+          }
+        }
+      }
+    } else {
+      final merchMatch = _merchantRegex.firstMatch(combined);
+      if (merchMatch != null) {
+        var candidate = merchMatch.group(1)?.trim();
+        if (candidate != null) {
+          candidate = _cleanSenderName(candidate);
+          if (candidate.length >= 2 &&
+              !candidate.toLowerCase().contains('account') &&
+              !candidate.toLowerCase().contains('bank') &&
+              !candidate.toLowerCase().contains('ending')) {
+            merchant = candidate;
+          }
+        }
       }
     }
 
-    // 3. Last 4 digits extraction
+    // 4. Last 4 digits extraction
     String? last4;
     final last4Match = _last4Regex.firstMatch(combined);
     if (last4Match != null) {
       last4 = last4Match.group(1);
     }
 
-    // 4. Bank Name
+    // 5. Bank Name
     String bankName = 'UPI Bank';
     final bankMatch = _bankRegex.firstMatch(combined);
     if (bankMatch != null) {
@@ -98,10 +173,12 @@ class UpiParser {
       bankName = 'Bank SMS';
     }
 
-    // 5. Inferred Category Heuristic
+    // 6. Inferred Category Heuristic
     final lowerMerch = merchant.toLowerCase();
     String category = 'misc_pos';
-    if (lowerMerch.contains('starbucks') ||
+    if (isReceived) {
+      category = 'misc_pos';
+    } else if (lowerMerch.contains('starbucks') ||
         lowerMerch.contains('swiggy') ||
         lowerMerch.contains('zomato') ||
         lowerMerch.contains('cafe') ||
@@ -142,6 +219,8 @@ class UpiParser {
       packageName: packageName,
       inferredCategory: category,
       source: source,
+      txnType: txnType,
+      currency: 'INR',
     );
   }
 }

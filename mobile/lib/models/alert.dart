@@ -28,6 +28,9 @@ class AlertTransaction {
   final String merchant;
   final String category;
   final double amount;
+  final String source;
+  final String currency;
+  final String txnType;
 
   AlertTransaction({
     required this.id,
@@ -37,9 +40,20 @@ class AlertTransaction {
     required this.merchant,
     required this.category,
     required this.amount,
+    this.source = 'simulated',
+    this.currency = 'INR',
+    this.txnType = 'sent',
   });
 
+  bool get isReceived => txnType.toLowerCase() == 'received';
+  bool get isSent => !isReceived;
+  bool get isSourceUsd => (currency.toUpperCase() == 'USD' && source == 'simulated');
+
   factory AlertTransaction.fromJson(Map<String, dynamic> json) {
+    final src = json['source'] as String? ?? 'simulated';
+    final rawCurr = json['currency'] as String? ?? (src == 'simulated' ? 'USD' : 'INR');
+    final rawType = json['txn_type'] as String? ?? 'sent';
+
     return AlertTransaction(
       id: json['id'] as int? ?? 0,
       card: json['card'] as int? ?? 0,
@@ -50,6 +64,9 @@ class AlertTransaction {
       merchant: json['merchant'] as String? ?? '',
       category: json['category'] as String? ?? '',
       amount: _parseDouble(json['amount']),
+      source: src,
+      currency: rawCurr,
+      txnType: rawType,
     );
   }
 

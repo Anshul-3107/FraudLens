@@ -154,6 +154,8 @@ class TransactionProvider extends ChangeNotifier {
     required String bankName,
     required String packageName,
     String source = 'notification',
+    String txnType = 'sent',
+    String currency = 'INR',
   }) async {
     final response = await _transactionService.processNotification(
       amount: amount,
@@ -163,6 +165,8 @@ class TransactionProvider extends ChangeNotifier {
       bankName: bankName,
       packageName: packageName,
       source: source,
+      txnType: txnType,
+      currency: currency,
     );
     // Reload transactions to reflect the new state immediately
     loadTransactions(page: 1);
