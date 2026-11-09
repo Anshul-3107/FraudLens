@@ -84,6 +84,8 @@ class ApiConfig {
   static String get summaryUrl => '$baseUrl/api/summary/';
   static String get cardsUrl => '$baseUrl/api/cards/';
   static String get transactionsUrl => '$baseUrl/api/transactions/';
+  static String get processNotificationUrl =>
+      '$baseUrl/api/transactions/process_notification/';
   static String get alertsUrl => '$baseUrl/api/alerts/';
   static String get investigationsUrl => '$baseUrl/api/investigations/';
   static String get exchangeRatesUrl => '$baseUrl/api/exchange-rates/';

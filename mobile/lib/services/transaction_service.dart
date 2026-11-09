@@ -63,4 +63,27 @@ class TransactionService {
     );
     return TransactionCreateResponse.fromJson(response as Map<String, dynamic>);
   }
+
+  Future<Map<String, dynamic>> processNotification({
+    required double amount,
+    required String merchant,
+    required String category,
+    String? last4,
+    required String bankName,
+    required String packageName,
+  }) async {
+    final body = <String, dynamic>{
+      'amount': amount,
+      'merchant': merchant,
+      'category': category,
+      if (last4 != null && last4.isNotEmpty) 'last4': last4,
+      'bank_name': bankName,
+      'package_name': packageName,
+    };
+    final response = await _client.post(
+      ApiConfig.processNotificationUrl,
+      body: body,
+    );
+    return response as Map<String, dynamic>;
+  }
 }

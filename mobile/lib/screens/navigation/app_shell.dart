@@ -1,9 +1,15 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_theme.dart';
+import '../../providers/alert_provider.dart';
+import '../../providers/card_provider.dart';
 import '../../providers/dashboard_provider.dart';
+import '../../providers/transaction_provider.dart';
+import '../../services/notification_listener_service.dart';
+import '../../services/upi_parser.dart';
 import '../alerts/alerts_list_screen.dart';
 import '../cards/cards_list_screen.dart';
 import '../dashboard/dashboard_screen.dart';
@@ -25,15 +31,145 @@ class _AppShellState extends State<AppShell> {
   final List<GlobalKey> _navItemKeys = List.generate(6, (_) => GlobalKey());
 
   DateTime? _lastBackPress;
+  StreamSubscription<ParsedUpiNotification>? _notificationSub;
 
   @override
   void initState() {
     super.initState();
     _scrollToSelectedTab(_currentIndex);
+    _initNotificationListener();
+  }
+
+  void _initNotificationListener() {
+    _notificationSub = NotificationListenerService.instance.onUpiPaymentCaptured
+        .listen((upiPayment) {
+      if (!mounted) return;
+      _handleAutoCapturedPayment(upiPayment);
+    });
+
+    // Check permission prompt on launch
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final granted =
+          await NotificationListenerService.instance.isPermissionGranted();
+      if (!granted && mounted) {
+        _showNotificationPermissionBanner();
+      }
+    });
+  }
+
+  Future<void> _handleAutoCapturedPayment(ParsedUpiNotification upiPayment) async {
+    final txnProvider = context.read<TransactionProvider>();
+    final alertProvider = context.read<AlertProvider>();
+    final dashProvider = context.read<DashboardProvider>();
+    final cardProvider = context.read<CardProvider>();
+
+    try {
+      final res = await txnProvider.processNotification(
+        amount: upiPayment.amount,
+        merchant: upiPayment.merchant,
+        category: upiPayment.inferredCategory,
+        last4: upiPayment.last4,
+        bankName: upiPayment.bankName,
+        packageName: upiPayment.packageName,
+      );
+
+      final scoring = res['scoring'] as Map<String, dynamic>? ?? {};
+      final bool isFlagged = scoring['flagged'] == true;
+      final bool isRegistered = scoring['is_registered_account'] == true;
+
+      // Refresh alert and card lists
+      await alertProvider.loadAlerts(page: 1);
+      await dashProvider.loadSummary();
+      await cardProvider.loadCards();
+
+      if (!mounted) return;
+
+      // Smart Visual Routing Notification SnackBar
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 5),
+          backgroundColor: isFlagged
+              ? const Color(0xFFEF4444)
+              : const Color(0xFF10B981),
+          content: Row(
+            children: [
+              Icon(
+                isFlagged ? Icons.warning_rounded : Icons.check_circle_rounded,
+                color: Colors.white,
+                size: 24,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isFlagged
+                          ? 'Needs Action: Suspicious Transaction'
+                          : 'Transaction Captured: Safe',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13.5,
+                        color: Colors.white,
+                      ),
+                    ),
+                    Text(
+                      '₹${upiPayment.amount.toStringAsFixed(2)} at ${upiPayment.merchant}'
+                      '${!isRegistered ? " • Unregistered Account" : ""}',
+                      style: const TextStyle(fontSize: 12, color: Colors.white),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          action: isFlagged
+              ? SnackBarAction(
+                  label: 'Review',
+                  textColor: Colors.white,
+                  onPressed: () => _onTabSelected(2), // Jump to Alerts/Review tab
+                )
+              : SnackBarAction(
+                  label: 'View',
+                  textColor: Colors.white,
+                  onPressed: () => _onTabSelected(1), // Jump to Transactions tab
+                ),
+        ),
+      );
+    } catch (_) {}
+  }
+
+  void _showNotificationPermissionBanner() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 8),
+        content: const Row(
+          children: [
+            Icon(Icons.notifications_active_outlined, color: Colors.white, size: 22),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Enable Notification Access to auto-detect Google Pay & PhonePe payments',
+                style: TextStyle(fontSize: 12),
+              ),
+            ),
+          ],
+        ),
+        action: SnackBarAction(
+          label: 'Enable',
+          textColor: Colors.amberAccent,
+          onPressed: () {
+            NotificationListenerService.instance.requestPermission();
+          },
+        ),
+      ),
+    );
   }
 
   @override
   void dispose() {
+    _notificationSub?.cancel();
     _navScrollController.dispose();
     super.dispose();
   }

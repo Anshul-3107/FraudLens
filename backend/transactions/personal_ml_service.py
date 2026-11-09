@@ -160,7 +160,13 @@ def score_personal_transaction(card, feats: dict, global_score: float) -> dict:
 
 
 def update_behavior_profile_online(card, amount: float, occurred_at, merchant: str, category: str):
-    """Incrementally updates rolling summary statistics for the card's behavior profile."""
+    """Incrementally updates rolling summary statistics for the card's behavior profile.
+    If the card is an unregistered secondary account, it does not update the primary profile.
+    """
+    if "unregistered" in card.label.lower() or card.card_ref.startswith("unreg_"):
+        logger.info("Skipping behavioral profile update for unregistered card '%s'", card.label)
+        return
+
     profile, _ = UserBehaviorProfile.objects.get_or_create(card=card)
     profile.total_txns += 1
     n = profile.total_txns

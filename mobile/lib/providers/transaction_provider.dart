@@ -145,4 +145,25 @@ class TransactionProvider extends ChangeNotifier {
     loadTransactions(page: 1);
     return response;
   }
+
+  Future<Map<String, dynamic>> processNotification({
+    required double amount,
+    required String merchant,
+    required String category,
+    String? last4,
+    required String bankName,
+    required String packageName,
+  }) async {
+    final response = await _transactionService.processNotification(
+      amount: amount,
+      merchant: merchant,
+      category: category,
+      last4: last4,
+      bankName: bankName,
+      packageName: packageName,
+    );
+    // Reload transactions to reflect the new state immediately
+    loadTransactions(page: 1);
+    return response;
+  }
 }

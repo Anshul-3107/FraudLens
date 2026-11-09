@@ -401,21 +401,17 @@ class _AlertsListScreenState extends State<AlertsListScreen> {
                           child: Container(
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
-                              color: colors.surface,
+                              color: const Color(0xFFEF4444).withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: alert.status == 'open'
-                                    ? colors.riskCritical.withValues(
-                                        alpha: 0.35,
-                                      )
-                                    : colors.borderSubtle,
-                                width: alert.status == 'open' ? 1.5 : 1,
+                                color: const Color(0xFFEF4444).withValues(alpha: 0.50),
+                                width: 1.5,
                               ),
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // Header Row: Score Badge + Status
+                                // Header Row: Score Badge + Status + NEEDS ACTION
                                 Wrap(
                                   alignment: WrapAlignment.spaceBetween,
                                   crossAxisAlignment: WrapCrossAlignment.center,
@@ -430,6 +426,28 @@ class _AlertsListScreenState extends State<AlertsListScreen> {
                                       spacing: 6,
                                       runSpacing: 4,
                                       children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 7,
+                                            vertical: 3,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFEF4444).withValues(alpha: 0.25),
+                                            borderRadius: BorderRadius.circular(5),
+                                            border: Border.all(
+                                              color: const Color(0xFFEF4444).withValues(alpha: 0.6),
+                                            ),
+                                          ),
+                                          child: const Text(
+                                            'NEEDS ACTION',
+                                            style: TextStyle(
+                                              color: Color(0xFFEF4444),
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w800,
+                                              letterSpacing: 0.3,
+                                            ),
+                                          ),
+                                        ),
                                         AlertStatusBadge(status: alert.status),
                                         if (alert.latestVerdict != null)
                                           VerdictBadge(

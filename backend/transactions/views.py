@@ -436,6 +436,121 @@ class TransactionViewSet(
             status=status.HTTP_201_CREATED,
         )
 
+    @action(detail=False, methods=["post"])
+    def process_notification(self, request):
+        """Processes an auto-captured payment notification from Google Pay or PhonePe.
+
+        Body: {
+            "amount": float / str,
+            "merchant": str,
+            "category": str (optional, defaults to inferred or 'misc_pos'),
+            "last4": str (optional, extracted from SMS/notification e.g. "9719"),
+            "bank_name": str (optional, e.g. "HDFC Bank"),
+            "package_name": str (e.g. "com.google.android.apps.nbu.paisa.user"),
+            "occurred_at": ISO date string (optional, defaults to now),
+            "merch_lat": float (optional),
+            "merch_long": float (optional),
+        }
+
+        Routing Logic:
+        1. Account Matching: Checks if user has a card with matching last4.
+           - If matched: assigned to user's registered card -> uses adaptive personal model.
+           - If not matched: assigned to an "Unregistered Account" card -> evaluated strictly
+             via Universal Global Model, preserving the personal profile from pollution.
+        2. Visual Routing:
+           - Fraud/Alert -> Routed to Review Section ("Needs Action" / Red Card).
+           - Legitimate -> Saved into Transaction History (Green Card).
+        """
+        raw_amt = request.data.get("amount")
+        if raw_amt is None:
+            raise ValidationError({"amount": "Amount is required."})
+        try:
+            amount = float(raw_amt)
+            if not math.isfinite(amount) or amount <= 0:
+                raise ValueError()
+        except ValueError:
+            raise ValidationError({"amount": "A positive numerical amount is required."})
+
+        merchant = str(request.data.get("merchant", "UPI Merchant")).strip() or "UPI Merchant"
+        category = str(request.data.get("category", "misc_pos")).strip().lower()
+        if category not in [c[0] for c in Transaction.Category.choices]:
+            category = "misc_pos"
+
+        last4 = str(request.data.get("last4", "")).strip()
+        bank_name = str(request.data.get("bank_name", "UPI Bank")).strip()
+
+        # Check for card matching this user
+        user_cards = visible_cards(request.user)
+        matched_card = None
+        if last4:
+            matched_card = user_cards.filter(label__icontains=last4).first()
+            if not matched_card:
+                matched_card = user_cards.filter(card_ref__icontains=last4).first()
+
+        # If no last4 provided, try finding the user's primary/first registered card
+        if not matched_card and not last4 and user_cards.exists():
+            matched_card = user_cards.first()
+
+        is_registered = matched_card is not None
+        if not matched_card:
+            # Create/assign an "Unregistered Account" card for this user
+            unregistered_label = f"Unregistered {bank_name} •• {last4 if last4 else 'UPI'}"
+            card_ref = f"unreg_{request.user.id}_{last4 or 'upi'}_{secrets.token_hex(2)}"
+            matched_card, _ = Card.objects.get_or_create(
+                owner=request.user,
+                label=unregistered_label,
+                defaults={"card_ref": card_ref},
+            )
+
+        occurred_at_str = request.data.get("occurred_at")
+        if occurred_at_str:
+            occurred_at = parse_date(occurred_at_str)
+            if not occurred_at:
+                try:
+                    occurred_at = timezone.datetime.fromisoformat(occurred_at_str.replace("Z", "+00:00"))
+                except Exception:
+                    occurred_at = timezone.now()
+        else:
+            occurred_at = timezone.now()
+
+        if timezone.is_naive(occurred_at):
+            occurred_at = timezone.make_aware(occurred_at, timezone.utc)
+
+        merch_lat = request.data.get("merch_lat")
+        merch_long = request.data.get("merch_long")
+
+        txn, alert, result = ingest_transaction(
+            card=matched_card,
+            occurred_at=occurred_at,
+            merchant=merchant,
+            category=category,
+            amount=amount,
+            merch_lat=float(merch_lat) if merch_lat is not None else None,
+            merch_long=float(merch_long) if merch_long is not None else None,
+            source=Transaction.Source.NOTIFICATION,
+        )
+
+        txn.has_alert = alert is not None
+        scoring_resp = {
+            "score": round(result["score"], 6),
+            "flagged": result["flagged"],
+            "threshold": result["threshold"],
+            "reasons": result["reasons"],
+            "is_registered_account": is_registered,
+            "routing_destination": "review" if result["flagged"] else "history",
+            "card_color": "red" if result["flagged"] else "green",
+            "status_label": "Needs Action" if result["flagged"] else "Safe",
+        }
+
+        return Response(
+            {
+                "transaction": TransactionSerializer(txn).data,
+                "scoring": scoring_resp,
+                "alert_id": alert.id if alert else None,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
 
 ALERT_ORDERING = {
     "score": "score", "-score": "-score",

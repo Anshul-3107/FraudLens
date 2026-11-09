@@ -45,6 +45,7 @@ class Transaction(models.Model):
         SIMULATED = "simulated", "Simulated (Sparkov dataset)"
         UPLOAD = "upload", "User upload"
         AA_SANDBOX = "aa_sandbox", "Account Aggregator sandbox"
+        NOTIFICATION = "notification", "Live Notification Auto-capture"
 
     class Category(models.TextChoices):
         ENTERTAINMENT = "entertainment"
