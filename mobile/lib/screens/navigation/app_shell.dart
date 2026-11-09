@@ -71,18 +71,22 @@ class _AppShellState extends State<AppShell> {
         last4: upiPayment.last4,
         bankName: upiPayment.bankName,
         packageName: upiPayment.packageName,
+        source: upiPayment.source,
       );
 
       final scoring = res['scoring'] as Map<String, dynamic>? ?? {};
       final bool isFlagged = scoring['flagged'] == true;
       final bool isRegistered = scoring['is_registered_account'] == true;
+      final bool isEnriched = scoring['is_duplicate_enriched'] == true;
 
-      // Refresh alert and card lists
+      // Refresh alert, summary, and card lists
       await alertProvider.loadAlerts(page: 1);
       await dashProvider.loadSummary();
       await cardProvider.loadCards();
 
       if (!mounted) return;
+
+      final sourceLabel = upiPayment.source == 'sms' ? 'Bank SMS' : 'UPI Notification';
 
       // Smart Visual Routing Notification SnackBar
       ScaffoldMessenger.of(context).showSnackBar(
@@ -105,9 +109,11 @@ class _AppShellState extends State<AppShell> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      isFlagged
-                          ? 'Needs Action: Suspicious Transaction'
-                          : 'Transaction Captured: Safe',
+                      isEnriched
+                          ? 'Verified by $sourceLabel: Safe'
+                          : isFlagged
+                              ? 'Needs Action: Suspicious Transaction'
+                              : 'Captured via $sourceLabel: Safe',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 13.5,
@@ -116,7 +122,8 @@ class _AppShellState extends State<AppShell> {
                     ),
                     Text(
                       '₹${upiPayment.amount.toStringAsFixed(2)} at ${upiPayment.merchant}'
-                      '${!isRegistered ? " • Unregistered Account" : ""}',
+                      '${!isRegistered ? " • Unregistered Account" : ""}'
+                      '${isEnriched ? " (Deduplicated)" : ""}',
                       style: const TextStyle(fontSize: 12, color: Colors.white),
                     ),
                   ],
@@ -150,7 +157,7 @@ class _AppShellState extends State<AppShell> {
             SizedBox(width: 10),
             Expanded(
               child: Text(
-                'Enable Notification Access to auto-detect Google Pay & PhonePe payments',
+                'Enable Notification & SMS Access to auto-detect payments from Google Pay, PhonePe & Bank SMS',
                 style: TextStyle(fontSize: 12),
               ),
             ),
@@ -159,8 +166,9 @@ class _AppShellState extends State<AppShell> {
         action: SnackBarAction(
           label: 'Enable',
           textColor: Colors.amberAccent,
-          onPressed: () {
-            NotificationListenerService.instance.requestPermission();
+          onPressed: () async {
+            await NotificationListenerService.instance.requestPermission();
+            await NotificationListenerService.instance.requestSmsPermission();
           },
         ),
       ),

@@ -26,11 +26,13 @@ class NotificationListenerService {
       final pkg = data['package_name'] as String? ?? '';
       final title = data['title'] as String? ?? '';
       final text = data['text'] as String? ?? '';
+      final source = data['source'] as String? ?? 'notification';
 
       final parsed = UpiParser.parse(
         packageName: pkg,
         title: title,
         text: text,
+        source: source,
       );
 
       if (parsed != null) {
@@ -54,6 +56,24 @@ class NotificationListenerService {
   Future<void> requestPermission() async {
     try {
       await _channel.invokeMethod('openNotificationSettings');
+    } catch (_) {}
+  }
+
+  /// Check if SMS Receive permission is granted
+  Future<bool> isSmsPermissionGranted() async {
+    try {
+      final granted =
+          await _channel.invokeMethod<bool>('isSmsPermissionGranted');
+      return granted ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Request SMS permission dialog
+  Future<void> requestSmsPermission() async {
+    try {
+      await _channel.invokeMethod('requestSmsPermission');
     } catch (_) {}
   }
 

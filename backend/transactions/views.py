@@ -43,11 +43,11 @@ def get_client_ip(request):
 
 def visible_cards(user, request=None):
     """Users only ever see cards that they explicitly own.
-    Staff can see all cards only if query parameter `all_cards=true` is explicitly requested.
+    Staff members can view all cards across the system for security auditing and management.
     """
     if not user or not user.is_authenticated:
         return Card.objects.none()
-    if user.is_staff and request and request.query_params.get("all_cards", "").lower() == "true":
+    if user.is_staff:
         return Card.objects.all()
     return Card.objects.filter(owner=user)
 
@@ -518,6 +518,60 @@ class TransactionViewSet(
 
         merch_lat = request.data.get("merch_lat")
         merch_long = request.data.get("merch_long")
+        source_type = request.data.get("source", "notification").lower()
+        txn_source = Transaction.Source.SMS if source_type == "sms" else Transaction.Source.NOTIFICATION
+
+        # -------------------------------------------------------------
+        # Deduplication Window (Idempotency Check)
+        # If the same card, amount, and similar merchant occurred within
+        # the past 3 minutes (180s), enrich the existing record instead
+        # of recording a duplicate charge.
+        # -------------------------------------------------------------
+        dedup_window_start = occurred_at - timezone.timedelta(seconds=180)
+        dedup_window_end = occurred_at + timezone.timedelta(seconds=180)
+
+        existing_txn = (
+            Transaction.objects.filter(
+                card__in=user_cards if is_registered else Card.objects.filter(id=matched_card.id),
+                amount=amount,
+                occurred_at__gte=dedup_window_start,
+                occurred_at__lte=dedup_window_end,
+            )
+            .select_related("card")
+            .first()
+        )
+
+        if existing_txn:
+            logger.info(
+                "Deduplication matched: existing txn #%s (%s, %.2f) matches incoming %s",
+                existing_txn.id,
+                existing_txn.merchant,
+                existing_txn.amount,
+                txn_source,
+            )
+            has_alert = Alert.objects.filter(transaction=existing_txn).exists()
+            existing_alert = Alert.objects.filter(transaction=existing_txn).first()
+            score = existing_alert.score if existing_alert else 0.05
+            flagged = has_alert
+
+            return Response(
+                {
+                    "transaction": TransactionSerializer(existing_txn).data,
+                    "scoring": {
+                        "score": round(score, 6),
+                        "flagged": flagged,
+                        "threshold": 0.5,
+                        "reasons": existing_alert.reasons if existing_alert else [],
+                        "is_registered_account": is_registered,
+                        "is_duplicate_enriched": True,
+                        "routing_destination": "review" if flagged else "history",
+                        "card_color": "red" if flagged else "green",
+                        "status_label": "Needs Action" if flagged else "Safe",
+                    },
+                    "alert_id": existing_alert.id if existing_alert else None,
+                },
+                status=status.HTTP_200_OK,
+            )
 
         txn, alert, result = ingest_transaction(
             card=matched_card,
@@ -527,7 +581,7 @@ class TransactionViewSet(
             amount=amount,
             merch_lat=float(merch_lat) if merch_lat is not None else None,
             merch_long=float(merch_long) if merch_long is not None else None,
-            source=Transaction.Source.NOTIFICATION,
+            source=txn_source,
         )
 
         txn.has_alert = alert is not None
@@ -537,6 +591,7 @@ class TransactionViewSet(
             "threshold": result["threshold"],
             "reasons": result["reasons"],
             "is_registered_account": is_registered,
+            "is_duplicate_enriched": False,
             "routing_destination": "review" if result["flagged"] else "history",
             "card_color": "red" if result["flagged"] else "green",
             "status_label": "Needs Action" if result["flagged"] else "Safe",

@@ -46,6 +46,7 @@ class Transaction(models.Model):
         UPLOAD = "upload", "User upload"
         AA_SANDBOX = "aa_sandbox", "Account Aggregator sandbox"
         NOTIFICATION = "notification", "Live Notification Auto-capture"
+        SMS = "sms", "Live Bank SMS Auto-capture"
 
     class Category(models.TextChoices):
         ENTERTAINMENT = "entertainment"

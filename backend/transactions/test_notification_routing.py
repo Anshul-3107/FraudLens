@@ -67,3 +67,38 @@ class NotificationRoutingTests(TestCase):
         # Primary registered card behavior profile should NOT be affected
         profile = UserBehaviorProfile.objects.filter(card=self.card).first()
         self.assertIsNone(profile)  # Primary card untouched
+
+    def test_deduplication_between_notification_and_bank_sms(self):
+        # 1. First event: Google Pay Notification arrives
+        payload1 = {
+            "amount": 500.0,
+            "merchant": "Starbucks Coffee",
+            "category": "food_dining",
+            "last4": "9719",
+            "bank_name": "HDFC Bank",
+            "package_name": "com.google.android.apps.nbu.paisa.user",
+            "source": "notification",
+        }
+        resp1 = self.client.post("/api/transactions/process_notification/", payload1)
+        self.assertEqual(resp1.status_code, 201)
+        self.assertFalse(resp1.data["scoring"]["is_duplicate_enriched"])
+        txn_id = resp1.data["transaction"]["id"]
+
+        # 2. Second event: Bank SMS arrives 15 seconds later for the same charge
+        payload2 = {
+            "amount": 500.0,
+            "merchant": "STARBUCKS MUMBAI",
+            "category": "food_dining",
+            "last4": "9719",
+            "bank_name": "HDFC Bank",
+            "package_name": "android.telephony.sms",
+            "source": "sms",
+        }
+        resp2 = self.client.post("/api/transactions/process_notification/", payload2)
+        # Should return 200 OK (deduplicated) rather than creating a new transaction
+        self.assertEqual(resp2.status_code, 200)
+        self.assertTrue(resp2.data["scoring"]["is_duplicate_enriched"])
+        self.assertEqual(resp2.data["transaction"]["id"], txn_id)
+
+        # Assert only ONE transaction exists in database
+        self.assertEqual(Transaction.objects.filter(amount=500.0).count(), 1)

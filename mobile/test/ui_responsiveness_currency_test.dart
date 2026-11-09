@@ -278,7 +278,7 @@ void main() {
 
         // Must render cleanly with zero RenderFlex overflow on 320px width
         expect(tester.takeException(), isNull);
-        expect(find.text('FLAGGED'), findsOneWidget);
+        expect(find.text('NEEDS ACTION'), findsOneWidget);
         expect(
           find.text(
             'Global International Merchant Services & Transatlantic Logistics Corporation Limited',

@@ -153,6 +153,7 @@ class TransactionProvider extends ChangeNotifier {
     String? last4,
     required String bankName,
     required String packageName,
+    String source = 'notification',
   }) async {
     final response = await _transactionService.processNotification(
       amount: amount,
@@ -161,6 +162,7 @@ class TransactionProvider extends ChangeNotifier {
       last4: last4,
       bankName: bankName,
       packageName: packageName,
+      source: source,
     );
     // Reload transactions to reflect the new state immediately
     loadTransactions(page: 1);

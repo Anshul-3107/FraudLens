@@ -71,6 +71,7 @@ class TransactionService {
     String? last4,
     required String bankName,
     required String packageName,
+    String source = 'notification',
   }) async {
     final body = <String, dynamic>{
       'amount': amount,
@@ -79,6 +80,7 @@ class TransactionService {
       if (last4 != null && last4.isNotEmpty) 'last4': last4,
       'bank_name': bankName,
       'package_name': packageName,
+      'source': source,
     };
     final response = await _client.post(
       ApiConfig.processNotificationUrl,
