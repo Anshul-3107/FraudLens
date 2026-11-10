@@ -89,7 +89,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Text(
-                            'Get Started with FraudLens',
+                            'Create Your Account',
                             style: TextStyle(
                               color: colors.textPrimary,
                               fontSize: 18,
@@ -98,7 +98,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            'Set up your analyst credentials to begin monitoring suspicious transactions.',
+                            'Choose a unique username and password to start live fraud monitoring.',
                             style: TextStyle(
                               color: colors.textMuted,
                               fontSize: 13,

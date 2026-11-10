@@ -5,7 +5,6 @@ import '../../config/api_config.dart';
 import '../../config/app_theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/auth_service.dart';
-import 'phone_onboarding_screen.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -352,39 +351,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                     ),
                                   )
                                 : const Text('Sign In'),
-                          ),
-
-                          const SizedBox(height: 14),
-
-                          // Divider
-                          Row(
-                            children: [
-                              Expanded(child: Divider(color: colors.borderSubtle)),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 10),
-                                child: Text('OR', style: TextStyle(fontSize: 11, color: colors.textMuted)),
-                              ),
-                              Expanded(child: Divider(color: colors.borderSubtle)),
-                            ],
-                          ),
-
-                          const SizedBox(height: 14),
-
-                          // Connect with Phone / Bank Account
-                          OutlinedButton.icon(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const PhoneOnboardingScreen(),
-                                ),
-                              );
-                            },
-                            icon: const Icon(Icons.phone_android_rounded, size: 18),
-                            label: const Text('Connect Bank with Mobile OTP'),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                            ),
                           ),
                         ],
                       ),
