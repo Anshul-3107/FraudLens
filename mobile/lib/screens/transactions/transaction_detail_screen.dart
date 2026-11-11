@@ -120,43 +120,47 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                   color: txn.hasAlert
                       ? colors.riskCritical.withValues(alpha: 0.3)
                       : colors.borderSubtle,
-                  width: txn.hasAlert ? 1.5 : 1,
+                  width: 1,
                 ),
               ),
               child: Column(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    width: 52,
+                    height: 52,
                     decoration: BoxDecoration(
                       color: txn.hasAlert
                           ? colors.riskCriticalBg
-                          : colors.surfaceSubtle,
+                          : (txn.isReceived
+                              ? colors.riskLowBg
+                              : colors.surfaceSubtle),
                       shape: BoxShape.circle,
-                      border: Border.all(
-                        color: txn.hasAlert
-                            ? colors.riskCritical.withValues(alpha: 0.25)
-                            : colors.borderSubtle,
-                      ),
                     ),
                     child: Icon(
                       txn.hasAlert
-                          ? Icons.warning_rounded
-                          : (txn.isReceived ? Icons.south_west_rounded : Icons.north_east_rounded),
-                      size: 28,
+                          ? Icons.warning_amber_rounded
+                          : (txn.isReceived
+                              ? Icons.south_west_rounded
+                              : Icons.north_east_rounded),
+                      size: 24,
                       color: txn.hasAlert
                           ? colors.riskCritical
-                          : (txn.isReceived ? const Color(0xFF10B981) : colors.primary),
+                          : (txn.isReceived
+                              ? colors.riskLow
+                              : colors.textSecondary),
                     ),
                   ),
                   const SizedBox(height: 12),
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(
-                      '${txn.isReceived ? '+' : '-'}${currencyProvider.format(txn.amount, isSourceUsd: txn.isSourceUsd)}',
+                      '${txn.isReceived ? '+' : ''}${currencyProvider.format(txn.amount, isSourceUsd: txn.isSourceUsd)}',
                       style: TextStyle(
-                        color: txn.hasAlert
-                            ? colors.riskCritical
-                            : (txn.isReceived ? const Color(0xFF10B981) : colors.textPrimary),
+                        color: txn.isReceived
+                            ? colors.riskLow
+                            : (txn.hasAlert
+                                ? colors.riskCritical
+                                : colors.textPrimary),
                         fontSize: 28,
                         fontWeight: FontWeight.w700,
                         letterSpacing: -0.5,
@@ -190,33 +194,42 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: txn.isReceived
-                              ? const Color(0xFF10B981).withValues(alpha: 0.15)
+                              ? colors.riskLowBg
                               : colors.surfaceSubtle,
                           borderRadius: BorderRadius.circular(6),
                           border: Border.all(
-                            color: txn.isReceived
-                                ? const Color(0xFF10B981).withValues(alpha: 0.35)
-                                : colors.borderSubtle,
+                            color: colors.borderSubtle,
                           ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
-                              txn.isReceived ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded,
+                              txn.isReceived
+                                  ? Icons.arrow_downward_rounded
+                                  : Icons.arrow_upward_rounded,
                               size: 13,
-                              color: txn.isReceived ? const Color(0xFF10B981) : colors.textSecondary,
+                              color: txn.isReceived
+                                  ? colors.riskLow
+                                  : colors.textSecondary,
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              txn.isReceived ? 'Money Received' : 'Money Sent',
+                              txn.isReceived
+                                  ? 'Money Received'
+                                  : 'Money Sent',
                               style: TextStyle(
-                                color: txn.isReceived ? const Color(0xFF10B981) : colors.textSecondary,
+                                color: txn.isReceived
+                                    ? colors.riskLow
+                                    : colors.textSecondary,
                                 fontSize: 11.5,
-                                fontWeight: FontWeight.w700,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ],

@@ -18,21 +18,8 @@ class TransactionCard extends StatelessWidget {
     final currencyProvider = context.watch<CurrencyProvider>();
     final dateFormat = DateFormat('MMM d, yyyy • h:mm a');
     final isFlagged = transaction.hasAlert;
-    final isUnregistered = transaction.cardLabel.toLowerCase().contains('unregistered');
-
-    // Vibrant Red card for fraud / flagged ("Needs Action")
-    // Vibrant Green card for safe, legitimate transactions
-    final cardBgColor = isFlagged
-        ? const Color(0xFFEF4444).withValues(alpha: 0.12)
-        : const Color(0xFF10B981).withValues(alpha: 0.08);
-
-    final cardBorderColor = isFlagged
-        ? const Color(0xFFEF4444).withValues(alpha: 0.45)
-        : const Color(0xFF10B981).withValues(alpha: 0.35);
-
-    final statusTextColor = isFlagged
-        ? const Color(0xFFEF4444)
-        : const Color(0xFF10B981);
+    final isUnregistered =
+        transaction.cardLabel.toLowerCase().contains('unregistered');
 
     return InkWell(
       onTap: onTap,
@@ -40,51 +27,47 @@ class TransactionCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: cardBgColor,
+          color: colors.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: cardBorderColor,
-            width: isFlagged ? 1.5 : 1.0,
+            color: isFlagged
+                ? colors.riskCritical.withValues(alpha: 0.35)
+                : colors.borderSubtle,
+            width: 1.0,
           ),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Transaction Icon / Status indicator
+            // Transaction icon container (clean & restrained)
             Container(
-              padding: const EdgeInsets.all(8),
+              width: 38,
+              height: 38,
               decoration: BoxDecoration(
                 color: isFlagged
-                    ? const Color(0xFFEF4444).withValues(alpha: 0.20)
+                    ? colors.riskCriticalBg
                     : (transaction.isReceived
-                        ? const Color(0xFF10B981).withValues(alpha: 0.20)
+                        ? colors.riskLowBg
                         : colors.surfaceSubtle),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: isFlagged
-                      ? const Color(0xFFEF4444).withValues(alpha: 0.35)
-                      : (transaction.isReceived
-                          ? const Color(0xFF10B981).withValues(alpha: 0.40)
-                          : colors.borderSubtle),
-                ),
+                borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
                 isFlagged
-                    ? Icons.warning_rounded
+                    ? Icons.warning_amber_rounded
                     : (transaction.isReceived
                         ? Icons.south_west_rounded
                         : Icons.north_east_rounded),
-                size: 20,
+                size: 18,
                 color: isFlagged
-                    ? const Color(0xFFEF4444)
+                    ? colors.riskCritical
                     : (transaction.isReceived
-                        ? const Color(0xFF10B981)
+                        ? colors.riskLow
                         : colors.textSecondary),
               ),
             ),
             const SizedBox(width: 12),
 
-            // Merchant, Date, and Badges
+            // Merchant & Metadata
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -98,55 +81,34 @@ class TransactionCard extends StatelessWidget {
                             color: colors.textPrimary,
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
+                            letterSpacing: -0.1,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       if (isFlagged) ...[
-                        const SizedBox(width: 4),
+                        const SizedBox(width: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 6,
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFEF4444).withValues(alpha: 0.25),
+                            color: colors.riskCriticalBg,
                             borderRadius: BorderRadius.circular(4),
                             border: Border.all(
-                              color: const Color(0xFFEF4444).withValues(alpha: 0.5),
+                              color: colors.riskCritical.withValues(alpha: 0.3),
+                              width: 0.8,
                             ),
                           ),
-                          child: const Text(
+                          child: Text(
                             'NEEDS ACTION',
                             style: TextStyle(
-                              color: Color(0xFFEF4444),
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.3,
-                            ),
-                          ),
-                        ),
-                      ] else ...[
-                        const SizedBox(width: 4),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF10B981).withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(
-                              color: const Color(0xFF10B981).withValues(alpha: 0.4),
-                            ),
-                          ),
-                          child: const Text(
-                            'SAFE',
-                            style: TextStyle(
-                              color: Color(0xFF10B981),
+                              color: colors.riskCritical,
                               fontSize: 9.5,
                               fontWeight: FontWeight.w700,
+                              letterSpacing: 0.3,
                             ),
                           ),
                         ),
@@ -156,53 +118,12 @@ class TransactionCard extends StatelessWidget {
                   const SizedBox(height: 3),
                   Row(
                     children: [
-                      // Direction Badge (Money Received vs Money Sent)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 4,
-                          vertical: 1,
-                        ),
-                        margin: const EdgeInsets.only(right: 5),
-                        decoration: BoxDecoration(
-                          color: transaction.isReceived
-                              ? const Color(0xFF10B981).withValues(alpha: 0.16)
-                              : colors.surfaceSubtle,
-                          borderRadius: BorderRadius.circular(3),
-                          border: Border.all(
-                            color: transaction.isReceived
-                                ? const Color(0xFF10B981).withValues(alpha: 0.35)
-                                : colors.borderSubtle,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              transaction.isReceived
-                                  ? Icons.arrow_downward_rounded
-                                  : Icons.arrow_upward_rounded,
-                              size: 9,
-                              color: transaction.isReceived
-                                  ? const Color(0xFF10B981)
-                                  : colors.textSecondary,
-                            ),
-                            const SizedBox(width: 2),
-                            Text(
-                              transaction.isReceived ? 'RECEIVED' : 'SENT',
-                              style: TextStyle(
-                                color: transaction.isReceived
-                                    ? const Color(0xFF10B981)
-                                    : colors.textSecondary,
-                                fontSize: 8.5,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
                       if (isUnregistered) ...[
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 1,
+                          ),
                           margin: const EdgeInsets.only(right: 5),
                           decoration: BoxDecoration(
                             color: colors.surfaceSubtle,
@@ -214,15 +135,18 @@ class TransactionCard extends StatelessWidget {
                             style: TextStyle(
                               color: colors.textMuted,
                               fontSize: 8.5,
-                              fontWeight: FontWeight.w700,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
                       ],
                       Expanded(
                         child: Text(
-                          '${dateFormat.format(transaction.occurredAt)} • ${transaction.cardLabel}',
-                          style: TextStyle(color: colors.textMuted, fontSize: 11),
+                          '${transaction.formattedCategory} • ${dateFormat.format(transaction.occurredAt)}',
+                          style: TextStyle(
+                            color: colors.textMuted,
+                            fontSize: 11.5,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -232,11 +156,11 @@ class TransactionCard extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 10),
 
-            // Amount and Category
+            // Amount and Card Source
             ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 100),
+              constraints: const BoxConstraints(maxWidth: 110),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 mainAxisSize: MainAxisSize.min,
@@ -247,39 +171,28 @@ class TransactionCard extends StatelessWidget {
                     child: Text(
                       '${transaction.isReceived ? '+' : ''}${currencyProvider.format(transaction.amount, isSourceUsd: transaction.isSourceUsd)}',
                       style: TextStyle(
-                        color: isFlagged
-                            ? const Color(0xFFEF4444)
-                            : (transaction.isReceived
-                                ? const Color(0xFF10B981)
-                                : statusTextColor),
+                        color: transaction.isReceived
+                            ? colors.riskLow
+                            : (isFlagged
+                                ? colors.riskCritical
+                                : colors.textPrimary),
                         fontSize: 14.5,
                         fontWeight: FontWeight.w700,
+                        letterSpacing: -0.2,
                       ),
                       maxLines: 1,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
+                  const SizedBox(height: 3),
+                  Text(
+                    transaction.cardLabel,
+                    style: TextStyle(
+                      color: colors.textSecondary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
                     ),
-                    decoration: BoxDecoration(
-                      color: colors.surfaceSubtle,
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: colors.borderSubtle),
-                    ),
-                    child: Text(
-                      transaction.formattedCategory,
-                      style: TextStyle(
-                        color: colors.textSecondary,
-                        fontSize: 9.5,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),

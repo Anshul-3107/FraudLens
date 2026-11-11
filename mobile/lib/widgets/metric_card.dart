@@ -26,19 +26,20 @@ class MetricCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
     final effectiveIconColor = iconColor ?? colors.tealPrimary;
-    final effectiveIconBg =
-        iconBg ??
-        effectiveIconColor.withValues(alpha: colors.isDark ? 0.16 : 0.10);
+    final effectiveIconBg = iconBg ??
+        (colors.isDark
+            ? colors.surfaceSubtle
+            : effectiveIconColor.withValues(alpha: 0.08));
 
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
           color: colors.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: colors.border, width: 1),
+          border: Border.all(color: colors.borderSubtle, width: 1),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -61,12 +62,12 @@ class MetricCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 6),
                 Container(
                   padding: const EdgeInsets.all(5),
                   decoration: BoxDecoration(
                     color: effectiveIconBg,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(7),
                   ),
                   child: Icon(icon, size: 15, color: effectiveIconColor),
                 ),

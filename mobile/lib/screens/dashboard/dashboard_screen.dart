@@ -203,12 +203,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(6),
+              padding: const EdgeInsets.all(7),
               decoration: BoxDecoration(
-                color: colors.primary.withValues(alpha: 0.15),
+                color: colors.surfaceSubtle,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: colors.primary.withValues(alpha: 0.25),
+                  color: colors.borderSubtle,
                 ),
               ),
               child: Icon(
@@ -225,19 +225,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 children: [
                   const Text(
                     'FraudLens Overview',
-                    style: TextStyle(fontSize: 16),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.2,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   if (authProvider.user != null)
                     Text(
-                      'Analyst: ${authProvider.user!.username}${authProvider.user!.isStaff ? " (Staff)" : ""}',
+                      '${authProvider.user!.username}${authProvider.user!.isStaff ? " • Staff" : ""}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 11.5,
                         color: colors.textMuted,
-                        fontWeight: FontWeight.normal,
+                        fontWeight: FontWeight.w400,
                       ),
                     ),
                 ],
@@ -405,10 +409,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: colors.primary.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(14),
+                          color: colors.surface,
+                          borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: colors.primary.withValues(alpha: 0.25),
+                            color: colors.borderSubtle,
                             width: 1,
                           ),
                         ),
@@ -417,13 +421,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             Container(
                               padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(
-                                color: colors.primary.withValues(alpha: 0.15),
-                                shape: BoxShape.circle,
+                                color: colors.surfaceSubtle,
+                                borderRadius: BorderRadius.circular(10),
                               ),
                               child: Icon(
-                                Icons.auto_awesome_rounded,
+                                Icons.shield_outlined,
                                 color: colors.primary,
-                                size: 24,
+                                size: 22,
                               ),
                             ),
                             const SizedBox(width: 14),
@@ -432,19 +436,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Account Active & Monitoring Ready',
+                                    'Active Protection & Monitoring',
                                     style: TextStyle(
                                       color: colors.textPrimary,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13.5,
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
+                                  const SizedBox(height: 3),
                                   Text(
-                                    'As transactions occur, FraudLens will automatically analyze behavior, detect anomalies, and populate your metrics in real-time.',
+                                    'Incoming UPI payments and transactions will automatically be evaluated for security and behavioral anomalies in real-time.',
                                     style: TextStyle(
                                       color: colors.textSecondary,
                                       fontSize: 12,
+                                      height: 1.35,
                                     ),
                                   ),
                                 ],

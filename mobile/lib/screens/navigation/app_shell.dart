@@ -91,21 +91,29 @@ class _AppShellState extends State<AppShell> {
       final sourceLabel = upiPayment.source == 'sms' ? 'Bank SMS' : 'UPI Notification';
       final bool isReceived = upiPayment.isReceived;
 
-      // Smart Visual Routing Notification SnackBar
+      // Refined fintech notification toast
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           duration: const Duration(seconds: 5),
-          backgroundColor: isFlagged
-              ? const Color(0xFFEF4444)
-              : const Color(0xFF10B981),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          backgroundColor: const Color(0xFF0F172A),
           content: Row(
             children: [
               Icon(
                 isFlagged
-                    ? Icons.warning_rounded
-                    : (isReceived ? Icons.south_west_rounded : Icons.check_circle_rounded),
-                color: Colors.white,
-                size: 24,
+                    ? Icons.warning_amber_rounded
+                    : (isReceived
+                        ? Icons.south_west_rounded
+                        : Icons.check_circle_outline_rounded),
+                color: isFlagged
+                    ? const Color(0xFFF87171)
+                    : (isReceived
+                        ? const Color(0xFF34D399)
+                        : const Color(0xFF2DD4BF)),
+                size: 22,
               ),
               const SizedBox(width: 12),
               Expanded(

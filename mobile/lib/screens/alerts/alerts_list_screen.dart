@@ -401,11 +401,11 @@ class _AlertsListScreenState extends State<AlertsListScreen> {
                           child: Container(
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFEF4444).withValues(alpha: 0.12),
+                              color: colors.surface,
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: const Color(0xFFEF4444).withValues(alpha: 0.50),
-                                width: 1.5,
+                                color: colors.riskCritical.withValues(alpha: 0.25),
+                                width: 1.0,
                               ),
                             ),
                             child: Column(
@@ -425,29 +425,32 @@ class _AlertsListScreenState extends State<AlertsListScreen> {
                                     Wrap(
                                       spacing: 6,
                                       runSpacing: 4,
+                                      crossAxisAlignment: WrapCrossAlignment.center,
                                       children: [
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 7,
-                                            vertical: 3,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFFEF4444).withValues(alpha: 0.25),
-                                            borderRadius: BorderRadius.circular(5),
-                                            border: Border.all(
-                                              color: const Color(0xFFEF4444).withValues(alpha: 0.6),
+                                        if (alert.status.toLowerCase() == 'open')
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 6,
+                                              vertical: 2,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: colors.riskCriticalBg,
+                                              borderRadius: BorderRadius.circular(4),
+                                              border: Border.all(
+                                                color: colors.riskCritical.withValues(alpha: 0.25),
+                                                width: 0.8,
+                                              ),
+                                            ),
+                                            child: Text(
+                                              'NEEDS ACTION',
+                                              style: TextStyle(
+                                                color: colors.riskCritical,
+                                                fontSize: 9.5,
+                                                fontWeight: FontWeight.w700,
+                                                letterSpacing: 0.3,
+                                              ),
                                             ),
                                           ),
-                                          child: const Text(
-                                            'NEEDS ACTION',
-                                            style: TextStyle(
-                                              color: Color(0xFFEF4444),
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.w800,
-                                              letterSpacing: 0.3,
-                                            ),
-                                          ),
-                                        ),
                                         AlertStatusBadge(status: alert.status),
                                         if (alert.latestVerdict != null)
                                           VerdictBadge(
