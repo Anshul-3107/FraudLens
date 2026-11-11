@@ -393,9 +393,22 @@ class TransactionViewSet(
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
-        card = visible_cards(request.user).filter(id=data["card"]).first()
-        if card is None:
-            raise ValidationError({"card": "No card with that id on your account."})
+        card_id = data.get("card")
+        card = None
+        if card_id is not None:
+            card = visible_cards(request.user).filter(id=card_id).first()
+            if card is None:
+                raise ValidationError({"card": "No card with that id on your account."})
+        else:
+            user_cards = visible_cards(request.user)
+            if user_cards.exists():
+                card = user_cards.first()
+            else:
+                card = Card.objects.create(
+                    owner=request.user,
+                    card_ref=f"primary_{request.user.id}_{secrets.token_hex(3)}",
+                    label="Primary Account •• 0001",
+                )
 
         supplied_ref = data.get("trans_ref")
         try:

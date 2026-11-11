@@ -24,8 +24,8 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
   CardModel? _selectedCard;
   String _selectedCategory = 'grocery_pos';
   String _source = 'upload';
-  final _merchantController = TextEditingController(text: 'Amazon Marketplace');
-  final _amountController = TextEditingController(text: '85.50');
+  final _merchantController = TextEditingController();
+  final _amountController = TextEditingController();
   final _transRefController = TextEditingController();
   final _latController = TextEditingController();
   final _longController = TextEditingController();
@@ -55,12 +55,6 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
 
   Future<void> _submitTransaction() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedCard == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a payment card')),
-      );
-      return;
-    }
 
     final rawInput = double.tryParse(_amountController.text.trim());
     if (rawInput == null || rawInput <= 0) {
@@ -81,7 +75,7 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
 
     try {
       final req = TransactionCreateRequest(
-        card: _selectedCard!.id,
+        card: _selectedCard?.id,
         occurredAt: _occurredAt.toUtc(),
         merchant: _merchantController.text.trim(),
         category: _selectedCategory,
@@ -97,9 +91,10 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
       final resp = await context.read<TransactionProvider>().createTransaction(
         req,
       );
-      // Refresh dashboard summary
+      // Refresh dashboard summary and cards
       if (mounted) {
         context.read<DashboardProvider>().loadSummary();
+        context.read<CardProvider>().loadCards();
         setState(() {
           _submitting = false;
           _result = resp;
@@ -292,18 +287,23 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
                         labelText: 'Payment Card',
                         prefixIcon: Icon(Icons.credit_card_rounded, size: 20),
                       ),
-                      items: cardProvider.cards.map((c) {
-                        return DropdownMenuItem<CardModel?>(
-                          value: c,
-                          child: Text(
-                            c.label,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        );
-                      }).toList(),
+                      items: cardProvider.cards.isEmpty
+                          ? [
+                              const DropdownMenuItem<CardModel?>(
+                                value: null,
+                                child: Text('Primary Account (Auto-linked)'),
+                              ),
+                            ]
+                          : cardProvider.cards.map((c) {
+                              return DropdownMenuItem<CardModel?>(
+                                value: c,
+                                child: Text(
+                                  c.label,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              );
+                            }).toList(),
                       onChanged: (val) => setState(() => _selectedCard = val),
-                      validator: (val) =>
-                          val == null ? 'Please select a card' : null,
                     ),
                     const SizedBox(height: 14),
 
@@ -317,8 +317,8 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
                         labelText:
                             'Amount in ${currencyProvider.activeCurrencyInfo.name} (${currencyProvider.activeCurrencyInfo.symbol})',
                         hintText: currencyProvider.activeCurrency == 'INR'
-                            ? '5000.00'
-                            : '85.50',
+                            ? '500.00'
+                            : '50.00',
                         prefixIcon: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 12),
                           child: Center(
@@ -372,7 +372,7 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
                       controller: _merchantController,
                       decoration: const InputDecoration(
                         labelText: 'Merchant Name',
-                        hintText: 'fraud_Kirlin and Sons',
+                        hintText: 'e.g. Swiggy, Amazon, Starbucks',
                         prefixIcon: Icon(Icons.storefront_rounded, size: 20),
                       ),
                       validator: (val) => val == null || val.trim().isEmpty

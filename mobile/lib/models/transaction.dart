@@ -134,7 +134,7 @@ class TransactionCreateResponse {
 }
 
 class TransactionCreateRequest {
-  final int card;
+  final int? card;
   final DateTime occurredAt;
   final String merchant;
   final String category;
@@ -145,7 +145,7 @@ class TransactionCreateRequest {
   final String source;
 
   TransactionCreateRequest({
-    required this.card,
+    this.card,
     required this.occurredAt,
     required this.merchant,
     required this.category,
@@ -158,7 +158,7 @@ class TransactionCreateRequest {
 
   Map<String, dynamic> toJson() {
     final map = <String, dynamic>{
-      'card': card,
+      if (card != null) 'card': card,
       'occurred_at': occurredAt.toIso8601String(),
       'merchant': merchant.trim(),
       'category': category,

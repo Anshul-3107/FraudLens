@@ -62,7 +62,7 @@ class TransactionSerializer(serializers.ModelSerializer):
 class TransactionCreateSerializer(serializers.Serializer):
     """Input for POST /api/transactions/. Whether the card belongs to the user is
     checked in the view."""
-    card = serializers.IntegerField()
+    card = serializers.IntegerField(required=False, allow_null=True)
     occurred_at = serializers.DateTimeField()
     merchant = serializers.CharField(max_length=255)
     category = serializers.ChoiceField(choices=Transaction.Category.choices)

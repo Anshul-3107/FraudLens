@@ -56,9 +56,9 @@ class _CardsListScreenState extends State<CardsListScreen> {
             )
           : cardProvider.cards.isEmpty
           ? const EmptyStateView(
-              icon: Icons.credit_card_off_rounded,
-              title: 'No Cards Assigned',
-              message: 'There are no active payment cards assigned to your user account.',
+              icon: Icons.credit_card_outlined,
+              title: 'No Cards or Accounts Yet',
+              message: 'Cards are automatically linked when transactions occur via UPI notifications, Bank SMS, or manual recording.',
             )
           : RefreshIndicator(
               onRefresh: () => cardProvider.loadCards(),
