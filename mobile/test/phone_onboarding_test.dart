@@ -98,6 +98,10 @@ void main() {
     );
 
     await tester.pumpAndSettle();
+    await tester.runAsync(() async {
+      await Future.delayed(const Duration(milliseconds: 100));
+    });
+    await tester.pump();
 
     // Step 1: Verify Initial Screen
     expect(find.text('Verify Mobile Number'), findsOneWidget);

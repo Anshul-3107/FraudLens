@@ -118,6 +118,20 @@ void main() {
   });
 
   group('Part 1 & 2: MetricCard & Dashboard Overflow Verification Across Screen Sizes', () {
+    testWidgets('Warmup font and surface bindings', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.darkTheme,
+          home: const SizedBox(),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.runAsync(() async {
+        await Future.delayed(const Duration(milliseconds: 100));
+      });
+      await tester.pump();
+    });
+
     final screenSizes = [
       const Size(320, 640), // Compact / Small Android
       const Size(360, 640), // Standard Android
@@ -185,7 +199,7 @@ void main() {
             ),
           );
 
-          await tester.pump();
+          await tester.pumpAndSettle();
 
           // Must not trigger any bottom overflow exception
           expect(tester.takeException(), isNull);
@@ -193,6 +207,9 @@ void main() {
           expect(find.text('Transactions'), findsOneWidget);
           expect(find.text('Open Alerts'), findsOneWidget);
           expect(find.text('Resolved'), findsOneWidget);
+
+          await tester.pumpWidget(const SizedBox());
+          await tester.pumpAndSettle();
         },
       );
     }
@@ -290,7 +307,7 @@ void main() {
     );
 
     testWidgets(
-      'New Transaction Action button is present in AppBar and FAB is elevated above pagination',
+      'New Transaction FAB is present and elevated above pagination without duplicate AppBar button',
       (tester) async {
         await tester.binding.setSurfaceSize(const Size(360, 640));
         addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -329,11 +346,12 @@ void main() {
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 100));
 
-        // 1. Verify AppBar contains New Transaction action button
-        expect(find.byTooltip('New Transaction'), findsOneWidget);
+        // 1. Verify duplicate New Transaction action button was removed from AppBar
+        expect(find.byTooltip('New Transaction'), findsNothing);
 
-        // 2. Verify FloatingActionButton exists
+        // 2. Verify FloatingActionButton exists and has New Transaction text
         expect(find.byType(FloatingActionButton), findsOneWidget);
+        expect(find.text('New Transaction'), findsOneWidget);
 
         // 3. Verify pagination controls are visible and accessible
         expect(find.text('Prev'), findsOneWidget);

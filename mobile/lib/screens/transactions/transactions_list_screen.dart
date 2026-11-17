@@ -302,18 +302,6 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
             onPressed: _showFilterModal,
           ),
           IconButton(
-            icon: const Icon(Icons.add_rounded),
-            tooltip: 'New Transaction',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const CreateTransactionScreen(),
-                ),
-              );
-            },
-          ),
-          IconButton(
             icon: const Icon(Icons.refresh_rounded),
             tooltip: 'Refresh',
             onPressed: () =>

@@ -51,6 +51,10 @@ void main() {
         createTestApp(child: const AppShell(), size: const Size(360, 640)),
       );
       await tester.pumpAndSettle();
+      await tester.runAsync(() async {
+        await Future.delayed(const Duration(milliseconds: 100));
+      });
+      await tester.pump();
 
       // Verify all 6 navigation labels exist in the widget tree
       expect(find.text('Dashboard'), findsWidgets);
