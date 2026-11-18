@@ -224,7 +224,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Text(
-                    'FraudLens Overview',
+                    'FraudLens',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
@@ -412,9 +412,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           color: colors.surface,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: colors.borderSubtle,
+                            color: colors.border,
                             width: 1,
                           ),
+                          boxShadow: colors.isDark
+                              ? [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.2),
+                                    offset: const Offset(0, 2),
+                                    blurRadius: 4,
+                                  ),
+                                ]
+                              : null,
                         ),
                         child: Row(
                           children: [
@@ -472,9 +481,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         color: colors.surface,
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
-                          color: colors.borderSubtle,
+                          color: colors.border,
                           width: 1,
                         ),
+                        boxShadow: colors.isDark
+                            ? [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.2),
+                                  offset: const Offset(0, 2),
+                                  blurRadius: 4,
+                                ),
+                              ]
+                            : null,
                       ),
                       child: LayoutBuilder(
                         builder: (context, constraints) {
@@ -574,9 +592,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         color: colors.surface,
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
-                          color: colors.borderSubtle,
+                          color: colors.border,
                           width: 1,
                         ),
+                        boxShadow: colors.isDark
+                            ? [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.2),
+                                  offset: const Offset(0, 2),
+                                  blurRadius: 4,
+                                ),
+                              ]
+                            : null,
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,

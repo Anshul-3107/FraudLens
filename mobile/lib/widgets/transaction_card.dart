@@ -32,9 +32,18 @@ class TransactionCard extends StatelessWidget {
           border: Border.all(
             color: isFlagged
                 ? colors.riskCritical.withValues(alpha: 0.35)
-                : colors.borderSubtle,
+                : colors.border,
             width: 1.0,
           ),
+          boxShadow: colors.isDark
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.18),
+                    offset: const Offset(0, 1),
+                    blurRadius: 3,
+                  ),
+                ]
+              : null,
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,

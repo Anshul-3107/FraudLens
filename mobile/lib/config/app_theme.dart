@@ -74,26 +74,26 @@ class AppColors extends ThemeExtension<AppColors> {
   );
 
   static const AppColors dark = AppColors(
-    background: Color(0xFF0B0F17), // Deep Slate 950
-    surface: Color(0xFF131A29), // Refined Slate 900
-    surfaceMuted: Color(0xFF1C2438), // Elevated Slate 800
-    border: Color(0xFF222C42), // Subtle Dark Border
-    borderSubtle: Color(0xFF2E3B55),
-    textPrimary: Color(0xFFF8FAFC), // Crisp White-Slate
-    textSecondary: Color(0xFF94A3B8), // Muted Slate 400
-    textMuted: Color(0xFF64748B), // Subtle Slate 500
-    tealPrimary: Color(0xFF14B8A6), // Vibrant Teal in Dark Mode
+    background: Color(0xFF0F0F11), // Clean deep matte charcoal (pure dark)
+    surface: Color(0xFF18181B), // Zinc 900 card surface
+    surfaceMuted: Color(0xFF222226), // Elevated zinc container
+    border: Color(0xFF27272A), // Zinc 800 clean hairline border
+    borderSubtle: Color(0xFF323238), // Zinc 750 border
+    textPrimary: Color(0xFFFAFAFA), // Crisp pure off-white
+    textSecondary: Color(0xFFA1A1AA), // Zinc 400 neutral secondary
+    textMuted: Color(0xFF71717A), // Zinc 500 neutral muted
+    tealPrimary: Color(0xFF14B8A6), // Vibrant Teal
     tealLight: Color(0xFF2DD4BF),
     emerald: Color(0xFF10B981),
     emeraldDark: Color(0xFF34D399),
-    riskCritical: Color(0xFFF87171), // Refined Red 400
-    riskCriticalBg: Color(0x26EF4444), // 15% opacity red tint
-    riskHigh: Color(0xFFFB923C), // Refined Orange 400
-    riskHighBg: Color(0x26F97316),
-    riskMedium: Color(0xFFFBBF24), // Refined Amber 400
-    riskMediumBg: Color(0x26F59E0B),
-    riskLow: Color(0xFF34D399), // Refined Emerald 400
-    riskLowBg: Color(0x2610B981),
+    riskCritical: Color(0xFFEF4444), // Clean red
+    riskCriticalBg: Color(0x24EF4444),
+    riskHigh: Color(0xFFF97316),
+    riskHighBg: Color(0x24F97316),
+    riskMedium: Color(0xFFF59E0B),
+    riskMediumBg: Color(0x24F59E0B),
+    riskLow: Color(0xFF10B981),
+    riskLowBg: Color(0x2410B981),
     isDark: true,
   );
 

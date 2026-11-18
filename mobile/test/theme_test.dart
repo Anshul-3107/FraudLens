@@ -22,13 +22,13 @@ void main() {
       final darkColors = AppColors.dark;
 
       expect(darkColors.isDark, isTrue);
-      expect(darkColors.background, const Color(0xFF0B0F17)); // Deep Slate 950
-      expect(darkColors.surface, const Color(0xFF131A29)); // Refined Slate 900
+      expect(darkColors.background, const Color(0xFF0F0F11)); // Clean deep matte charcoal
+      expect(darkColors.surface, const Color(0xFF18181B)); // Zinc 900 card surface
       expect(darkColors.tealPrimary, const Color(0xFF14B8A6)); // Vibrant Teal
       expect(
         darkColors.textPrimary,
-        const Color(0xFFF8FAFC),
-      ); // Crisp White-Slate
+        const Color(0xFFFAFAFA),
+      ); // Crisp pure off-white
     });
 
     test('AppColors.light returns crisp light surfaces and border lines', () {

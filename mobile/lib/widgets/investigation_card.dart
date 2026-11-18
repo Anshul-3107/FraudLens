@@ -27,7 +27,16 @@ class InvestigationCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: colors.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: colors.borderSubtle, width: 1),
+          border: Border.all(color: colors.border, width: 1),
+          boxShadow: colors.isDark
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.18),
+                    offset: const Offset(0, 1),
+                    blurRadius: 3,
+                  ),
+                ]
+              : null,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
