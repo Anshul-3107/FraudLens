@@ -3,8 +3,13 @@ __pycache__/
 *.pyc
 ml/data/raw/*.csv
 ml/data/processed/*.parquet
+# Ignore large research artifacts while tracking production models
 ml/artifacts/*.joblib
 ml/artifacts/**/*.joblib
+!ml/artifacts/isolation_forest.joblib
+!ml/artifacts/xgb_with_iso.joblib
+!ml/artifacts/candidate_standalone_xgb/xgb_model.joblib
+ml/artifacts/personal/*.joblib
 backend/db.sqlite3
 .ipynb_checkpoints/
 .env
@@ -15,3 +20,12 @@ backend/.env
 .idea/
 *.iml
 .vscode/
+
+# Mobile / Flutter / Android build
+mobile/.dart_tool/
+mobile/build/
+mobile/android/build/
+mobile/android/.gradle/
+mobile/android/app/build/
+*.apk
+*.aab

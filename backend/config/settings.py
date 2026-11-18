@@ -7,11 +7,14 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
+# Database URL support for Render / Railway
+DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
+
 # Environment & Debug Configuration
 raw_env = os.environ.get("FRAUDLENS_ENV")
 if raw_env:
     FRAUDLENS_ENV = raw_env.lower()
-elif os.environ.get("DB_ENGINE", "").lower() == "postgres":
+elif DATABASE_URL or os.environ.get("DB_ENGINE", "").lower() == "postgres":
     FRAUDLENS_ENV = "production"
 else:
     FRAUDLENS_ENV = "development" if os.environ.get("DJANGO_DEBUG", "").lower() in ("1", "true", "yes") else "production"
@@ -63,9 +66,9 @@ def validate_security_settings(
             raise ImproperlyConfigured("Wildcard '*' in ALLOWED_HOSTS is strictly prohibited in production.")
         if cors_allow_all:
             raise ImproperlyConfigured("CORS_ALLOW_ALL_ORIGINS cannot be True in production deployment.")
-        if db_engine != "postgres":
+        if db_engine != "postgres" and not DATABASE_URL:
             raise ImproperlyConfigured(
-                f"Production deployment strictly requires DB_ENGINE=postgres (got '{db_engine or 'none'}'). "
+                f"Production deployment strictly requires DB_ENGINE=postgres or DATABASE_URL set (got '{db_engine or 'none'}'). "
                 "SQLite is strictly prohibited in production."
             )
 
@@ -147,7 +150,16 @@ validate_security_settings(
     db_engine=DB_ENGINE,
 )
 
-if DB_ENGINE == "postgres":
+if DATABASE_URL:
+    import dj_database_url
+    DATABASES = {
+        "default": dj_database_url.config(
+            default=DATABASE_URL,
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
+    }
+elif DB_ENGINE == "postgres":
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
