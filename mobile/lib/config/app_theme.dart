@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -100,7 +101,17 @@ class AppColors extends ThemeExtension<AppColors> {
   Color get primary => tealPrimary;
   Color get surfaceSubtle => surfaceMuted;
   Color get shadow =>
-      isDark ? const Color(0x00000000) : const Color(0x0A0F172A);
+      isDark ? const Color(0x38000000) : const Color(0x0A0F172A);
+
+  List<BoxShadow> get cardShadow => [
+        BoxShadow(
+          color: isDark
+              ? Colors.black.withValues(alpha: 0.22)
+              : Colors.black.withValues(alpha: 0.04),
+          offset: const Offset(0, 1.5),
+          blurRadius: 4,
+        ),
+      ];
 
   static AppColors of(BuildContext context) {
     final ext = Theme.of(context).extension<AppColors>();
@@ -229,6 +240,15 @@ class AppTheme {
       brightness: Brightness.light,
       fontFamily: GoogleFonts.inter().fontFamily,
       scaffoldBackgroundColor: colors.background,
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.windows: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.linux: CupertinoPageTransitionsBuilder(),
+        },
+      ),
       colorScheme: ColorScheme.light(
         primary: colors.tealPrimary,
         onPrimary: Colors.white,
@@ -360,11 +380,20 @@ class AppTheme {
       brightness: Brightness.dark,
       fontFamily: GoogleFonts.inter().fontFamily,
       scaffoldBackgroundColor: colors.background,
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.windows: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.linux: CupertinoPageTransitionsBuilder(),
+        },
+      ),
       colorScheme: ColorScheme.dark(
         primary: colors.tealPrimary,
-        onPrimary: const Color(0xFF0F172A),
+        onPrimary: const Color(0xFF0F0F11),
         secondary: colors.emeraldDark,
-        onSecondary: const Color(0xFF0F172A),
+        onSecondary: const Color(0xFF0F0F11),
         error: colors.riskCritical,
         onError: Colors.white,
         surface: colors.surface,
@@ -426,7 +455,7 @@ class AppTheme {
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: colors.textPrimary,
-          foregroundColor: const Color(0xFF0F172A),
+          foregroundColor: const Color(0xFF0F0F11),
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
           shape: RoundedRectangleBorder(

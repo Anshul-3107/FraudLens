@@ -193,6 +193,7 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
                         : colors.riskLow,
                     width: 1.5,
                   ),
+                  boxShadow: colors.cardShadow,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -268,7 +269,8 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
               decoration: BoxDecoration(
                 color: colors.surface,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: colors.borderSubtle, width: 1),
+                border: Border.all(color: colors.border, width: 1),
+                boxShadow: colors.cardShadow,
               ),
               child: Form(
                 key: _formKey,

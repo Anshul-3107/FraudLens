@@ -62,6 +62,7 @@ class ShapFactorCard extends StatelessWidget {
         color: colors.surface,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: colors.border, width: 1),
+        boxShadow: colors.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

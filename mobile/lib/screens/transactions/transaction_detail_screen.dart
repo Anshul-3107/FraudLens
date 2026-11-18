@@ -119,9 +119,10 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                 border: Border.all(
                   color: txn.hasAlert
                       ? colors.riskCritical.withValues(alpha: 0.3)
-                      : colors.borderSubtle,
+                      : colors.border,
                   width: 1,
                 ),
+                boxShadow: colors.cardShadow,
               ),
               child: Column(
                 children: [
@@ -285,7 +286,8 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
               decoration: BoxDecoration(
                 color: colors.surface,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: colors.borderSubtle, width: 1),
+                border: Border.all(color: colors.border, width: 1),
+                boxShadow: colors.cardShadow,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -299,7 +301,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Divider(color: colors.borderSubtle),
+                  Divider(color: colors.border),
                   _buildDetailRow(context, 'Transaction ID', '#${txn.id}'),
                   _buildDetailRow(
                     context,
@@ -345,6 +347,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                     color: colors.riskCritical.withValues(alpha: 0.35),
                     width: 1.5,
                   ),
+                  boxShadow: colors.cardShadow,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

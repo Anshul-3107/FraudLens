@@ -74,14 +74,8 @@ class _CardsListScreenState extends State<CardsListScreen> {
                     decoration: BoxDecoration(
                       color: colors.surface,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: colors.borderSubtle, width: 1),
-                      boxShadow: [
-                        BoxShadow(
-                          color: colors.shadow,
-                          blurRadius: 4,
-                          offset: const Offset(0, 1),
-                        ),
-                      ],
+                      border: Border.all(color: colors.border, width: 1),
+                      boxShadow: colors.cardShadow,
                     ),
                     padding: const EdgeInsets.all(16),
                     child: Column(

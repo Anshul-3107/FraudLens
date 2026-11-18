@@ -169,6 +169,7 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
                   color: colors.riskCritical.withValues(alpha: 0.3),
                   width: 1.5,
                 ),
+                boxShadow: colors.cardShadow,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -263,7 +264,8 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
                 decoration: BoxDecoration(
                   color: colors.surface,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: colors.borderSubtle, width: 1),
+                  border: Border.all(color: colors.border, width: 1),
+                  boxShadow: colors.cardShadow,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -277,7 +279,7 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Divider(color: colors.borderSubtle),
+                    Divider(color: colors.border),
                     const SizedBox(height: 4),
                     _buildDetailRow(context, 'Merchant', txn.merchant),
                     _buildDetailRow(
@@ -340,7 +342,8 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
               decoration: BoxDecoration(
                 color: colors.surface,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: colors.borderSubtle, width: 1),
+                border: Border.all(color: colors.border, width: 1),
+                boxShadow: colors.cardShadow,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -395,7 +398,8 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
               decoration: BoxDecoration(
                 color: colors.surface,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: colors.borderSubtle, width: 1),
+                border: Border.all(color: colors.border, width: 1),
+                boxShadow: colors.cardShadow,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

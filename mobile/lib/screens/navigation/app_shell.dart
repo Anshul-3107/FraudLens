@@ -90,6 +90,7 @@ class _AppShellState extends State<AppShell> {
 
       final sourceLabel = upiPayment.source == 'sms' ? 'Bank SMS' : 'UPI Notification';
       final bool isReceived = upiPayment.isReceived;
+      final colors = AppColors.of(context);
 
       // Refined fintech notification toast
       ScaffoldMessenger.of(context).showSnackBar(
@@ -98,8 +99,9 @@ class _AppShellState extends State<AppShell> {
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
+            side: BorderSide(color: colors.border, width: 1),
           ),
-          backgroundColor: const Color(0xFF0F172A),
+          backgroundColor: colors.surface,
           content: Row(
             children: [
               Icon(
@@ -109,10 +111,10 @@ class _AppShellState extends State<AppShell> {
                         ? Icons.south_west_rounded
                         : Icons.check_circle_outline_rounded),
                 color: isFlagged
-                    ? const Color(0xFFF87171)
+                    ? colors.riskCritical
                     : (isReceived
-                        ? const Color(0xFF34D399)
-                        : const Color(0xFF2DD4BF)),
+                        ? colors.riskLow
+                        : colors.tealLight),
                 size: 22,
               ),
               const SizedBox(width: 12),
@@ -129,10 +131,10 @@ class _AppShellState extends State<AppShell> {
                               : (isReceived
                                   ? 'Money Received ($sourceLabel)'
                                   : 'Captured via $sourceLabel: Safe'),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 13.5,
-                        color: Colors.white,
+                        color: colors.textPrimary,
                       ),
                     ),
                     Text(
@@ -143,7 +145,7 @@ class _AppShellState extends State<AppShell> {
                           : '₹${upiPayment.amount.toStringAsFixed(2)} sent to ${upiPayment.merchant}'
                               '${!isRegistered ? " • Unregistered Account" : ""}'
                               '${isEnriched ? " (Deduplicated)" : ""}',
-                      style: const TextStyle(fontSize: 12, color: Colors.white),
+                      style: TextStyle(fontSize: 12, color: colors.textSecondary),
                     ),
                   ],
                 ),
@@ -153,12 +155,12 @@ class _AppShellState extends State<AppShell> {
           action: isFlagged
               ? SnackBarAction(
                   label: 'Review',
-                  textColor: Colors.white,
+                  textColor: colors.riskCritical,
                   onPressed: () => _onTabSelected(2), // Jump to Alerts/Review tab
                 )
               : SnackBarAction(
                   label: 'View',
-                  textColor: Colors.white,
+                  textColor: colors.primary,
                   onPressed: () => _onTabSelected(1), // Jump to Transactions tab
                 ),
         ),
@@ -314,7 +316,7 @@ class _AppShellState extends State<AppShell> {
     return Container(
       decoration: BoxDecoration(
         color: colors.surface,
-        border: Border(top: BorderSide(color: colors.borderSubtle, width: 1)),
+        border: Border(top: BorderSide(color: colors.border, width: 1)),
       ),
       child: SafeArea(
         top: false,
@@ -545,7 +547,12 @@ class _AppShellState extends State<AppShell> {
                     thickness: 1,
                     color: colors.borderSubtle,
                   ),
-                  Expanded(child: screens[_currentIndex]),
+                  Expanded(
+                    child: _FadeIndexedStack(
+                      index: _currentIndex,
+                      children: screens,
+                    ),
+                  ),
                 ],
               ),
             );
@@ -554,7 +561,7 @@ class _AppShellState extends State<AppShell> {
           // Mobile layout with horizontally scrollable navigation.
           return Scaffold(
             backgroundColor: colors.background,
-            body: IndexedStack(index: _currentIndex, children: screens),
+            body: _FadeIndexedStack(index: _currentIndex, children: screens),
             bottomNavigationBar: _buildScrollableBottomNav(
               context: context,
               colors: colors,
@@ -563,6 +570,64 @@ class _AppShellState extends State<AppShell> {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _FadeIndexedStack extends StatefulWidget {
+  final int index;
+  final List<Widget> children;
+
+  const _FadeIndexedStack({
+    required this.index,
+    required this.children,
+  });
+
+  @override
+  State<_FadeIndexedStack> createState() => _FadeIndexedStackState();
+}
+
+class _FadeIndexedStackState extends State<_FadeIndexedStack>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 180),
+    );
+    _animation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutCubic,
+    );
+    _controller.forward();
+  }
+
+  @override
+  void didUpdateWidget(_FadeIndexedStack oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.index != oldWidget.index) {
+      _controller.forward(from: 0.0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _animation,
+      child: IndexedStack(
+        index: widget.index,
+        children: widget.children,
       ),
     );
   }

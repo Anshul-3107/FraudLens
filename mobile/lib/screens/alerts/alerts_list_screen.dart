@@ -59,7 +59,8 @@ class _AlertsListScreenState extends State<AlertsListScreen> {
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(20),
               ),
-              border: Border.all(color: colors.borderSubtle),
+              border: Border.all(color: colors.border),
+              boxShadow: colors.cardShadow,
             ),
             child: SingleChildScrollView(
               child: Column(
@@ -277,7 +278,7 @@ class _AlertsListScreenState extends State<AlertsListScreen> {
             decoration: BoxDecoration(
               color: colors.surface,
               border: Border(
-                bottom: BorderSide(color: colors.borderSubtle, width: 1),
+                bottom: BorderSide(color: colors.border, width: 1),
               ),
             ),
             child: SingleChildScrollView(
@@ -407,6 +408,7 @@ class _AlertsListScreenState extends State<AlertsListScreen> {
                                 color: colors.riskCritical.withValues(alpha: 0.25),
                                 width: 1.0,
                               ),
+                              boxShadow: colors.cardShadow,
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -619,7 +621,7 @@ class _AlertsListScreenState extends State<AlertsListScreen> {
               decoration: BoxDecoration(
                 color: colors.surface,
                 border: Border(
-                  top: BorderSide(color: colors.borderSubtle, width: 1),
+                  top: BorderSide(color: colors.border, width: 1),
                 ),
               ),
               child: Row(
@@ -705,7 +707,7 @@ class _StatusFilterChip extends StatelessWidget {
           color: isSelected ? effectiveColor : colors.surfaceSubtle,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? effectiveColor : colors.borderSubtle,
+            color: isSelected ? effectiveColor : colors.border,
           ),
         ),
         child: Text(

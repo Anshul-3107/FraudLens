@@ -48,6 +48,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 color: colors.surface,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: colors.border, width: 1),
+                boxShadow: colors.cardShadow,
               ),
               child: Column(
                 children: [
@@ -163,6 +164,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 color: colors.surface,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: colors.border, width: 1),
+                boxShadow: colors.cardShadow,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -255,6 +257,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 color: colors.surface,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: colors.border, width: 1),
+                boxShadow: colors.cardShadow,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -426,6 +429,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 color: colors.surface,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: colors.border, width: 1),
+                boxShadow: colors.cardShadow,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
