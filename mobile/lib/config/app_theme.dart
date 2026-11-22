@@ -24,6 +24,16 @@ class AppColors extends ThemeExtension<AppColors> {
   final Color riskMediumBg;
   final Color riskLow;
   final Color riskLowBg;
+  final Color indigo;
+  final Color indigoBg;
+  final Color violet;
+  final Color violetBg;
+  final Color cyan;
+  final Color cyanBg;
+  final Color amber;
+  final Color amberBg;
+  final Color rose;
+  final Color roseBg;
   final bool isDark;
 
   const AppColors({
@@ -47,6 +57,16 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.riskMediumBg,
     required this.riskLow,
     required this.riskLowBg,
+    required this.indigo,
+    required this.indigoBg,
+    required this.violet,
+    required this.violetBg,
+    required this.cyan,
+    required this.cyanBg,
+    required this.amber,
+    required this.amberBg,
+    required this.rose,
+    required this.roseBg,
     required this.isDark,
   });
 
@@ -71,6 +91,16 @@ class AppColors extends ThemeExtension<AppColors> {
     riskMediumBg: Color(0xFFFFFBEB), // Amber 50
     riskLow: Color(0xFF059669), // Emerald 600
     riskLowBg: Color(0xFFECFDF5), // Emerald 50
+    indigo: Color(0xFF4F46E5), // Indigo 600
+    indigoBg: Color(0xFFEEF2FF), // Indigo 50
+    violet: Color(0xFF7C3AED), // Violet 600
+    violetBg: Color(0xFFF5F3FF), // Violet 50
+    cyan: Color(0xFF0284C7), // Sky 600
+    cyanBg: Color(0xFFF0F9FF), // Sky 50
+    amber: Color(0xFFD97706), // Amber 600
+    amberBg: Color(0xFFFFFBEB), // Amber 50
+    rose: Color(0xFFE11D48), // Rose 600
+    roseBg: Color(0xFFFFF1F2), // Rose 50
     isDark: false,
   );
 
@@ -95,6 +125,16 @@ class AppColors extends ThemeExtension<AppColors> {
     riskMediumBg: Color(0x24F59E0B),
     riskLow: Color(0xFF10B981),
     riskLowBg: Color(0x2410B981),
+    indigo: Color(0xFF818CF8), // Indigo 400
+    indigoBg: Color(0x24818CF8),
+    violet: Color(0xFFA78BFA), // Violet 400
+    violetBg: Color(0x24A78BFA),
+    cyan: Color(0xFF38BDF8), // Sky 400
+    cyanBg: Color(0x2438BDF8),
+    amber: Color(0xFFFBBF24), // Amber 400
+    amberBg: Color(0x24FBBF24),
+    rose: Color(0xFFFB7185), // Rose 400
+    roseBg: Color(0x24FB7185),
     isDark: true,
   );
 
@@ -107,11 +147,50 @@ class AppColors extends ThemeExtension<AppColors> {
         BoxShadow(
           color: isDark
               ? Colors.black.withValues(alpha: 0.22)
-              : Colors.black.withValues(alpha: 0.04),
-          offset: const Offset(0, 1.5),
-          blurRadius: 4,
+              : const Color(0x0A0F172A),
+          offset: const Offset(0, 2),
+          blurRadius: 6,
         ),
       ];
+
+  Color getCategoryColor(String category) {
+    final cat = category.toLowerCase().trim();
+    if (cat.contains('food') || cat.contains('dining')) return amber;
+    if (cat.contains('grocery')) return emerald;
+    if (cat.contains('shop')) return violet;
+    if (cat.contains('gas') || cat.contains('transport') || cat.contains('travel')) return cyan;
+    if (cat.contains('entertain')) return rose;
+    if (cat.contains('health') || cat.contains('fitness')) return const Color(0xFFEC4899);
+    if (cat.contains('home') || cat.contains('utilities')) return indigo;
+    return tealPrimary;
+  }
+
+  Color getCategoryBg(String category) {
+    final cat = category.toLowerCase().trim();
+    if (cat.contains('food') || cat.contains('dining')) return amberBg;
+    if (cat.contains('grocery')) return riskLowBg;
+    if (cat.contains('shop')) return violetBg;
+    if (cat.contains('gas') || cat.contains('transport') || cat.contains('travel')) return cyanBg;
+    if (cat.contains('entertain')) return roseBg;
+    if (cat.contains('health') || cat.contains('fitness')) {
+      return isDark ? const Color(0x24EC4899) : const Color(0xFFFDF2F8);
+    }
+    if (cat.contains('home') || cat.contains('utilities')) return indigoBg;
+    return isDark ? const Color(0x2414B8A6) : const Color(0xFFCCFBF1);
+  }
+
+  IconData getCategoryIcon(String category) {
+    final cat = category.toLowerCase().trim();
+    if (cat.contains('food') || cat.contains('dining')) return Icons.restaurant_rounded;
+    if (cat.contains('grocery')) return Icons.local_grocery_store_rounded;
+    if (cat.contains('shop')) return Icons.shopping_bag_rounded;
+    if (cat.contains('gas') || cat.contains('transport')) return Icons.local_gas_station_rounded;
+    if (cat.contains('travel')) return Icons.flight_takeoff_rounded;
+    if (cat.contains('entertain')) return Icons.movie_creation_rounded;
+    if (cat.contains('health') || cat.contains('fitness')) return Icons.fitness_center_rounded;
+    if (cat.contains('home')) return Icons.home_rounded;
+    return Icons.receipt_long_rounded;
+  }
 
   static AppColors of(BuildContext context) {
     final ext = Theme.of(context).extension<AppColors>();
@@ -141,6 +220,16 @@ class AppColors extends ThemeExtension<AppColors> {
     Color? riskMediumBg,
     Color? riskLow,
     Color? riskLowBg,
+    Color? indigo,
+    Color? indigoBg,
+    Color? violet,
+    Color? violetBg,
+    Color? cyan,
+    Color? cyanBg,
+    Color? amber,
+    Color? amberBg,
+    Color? rose,
+    Color? roseBg,
     bool? isDark,
   }) {
     return AppColors(
@@ -164,6 +253,16 @@ class AppColors extends ThemeExtension<AppColors> {
       riskMediumBg: riskMediumBg ?? this.riskMediumBg,
       riskLow: riskLow ?? this.riskLow,
       riskLowBg: riskLowBg ?? this.riskLowBg,
+      indigo: indigo ?? this.indigo,
+      indigoBg: indigoBg ?? this.indigoBg,
+      violet: violet ?? this.violet,
+      violetBg: violetBg ?? this.violetBg,
+      cyan: cyan ?? this.cyan,
+      cyanBg: cyanBg ?? this.cyanBg,
+      amber: amber ?? this.amber,
+      amberBg: amberBg ?? this.amberBg,
+      rose: rose ?? this.rose,
+      roseBg: roseBg ?? this.roseBg,
       isDark: isDark ?? this.isDark,
     );
   }
@@ -192,6 +291,16 @@ class AppColors extends ThemeExtension<AppColors> {
       riskMediumBg: Color.lerp(riskMediumBg, other.riskMediumBg, t)!,
       riskLow: Color.lerp(riskLow, other.riskLow, t)!,
       riskLowBg: Color.lerp(riskLowBg, other.riskLowBg, t)!,
+      indigo: Color.lerp(indigo, other.indigo, t)!,
+      indigoBg: Color.lerp(indigoBg, other.indigoBg, t)!,
+      violet: Color.lerp(violet, other.violet, t)!,
+      violetBg: Color.lerp(violetBg, other.violetBg, t)!,
+      cyan: Color.lerp(cyan, other.cyan, t)!,
+      cyanBg: Color.lerp(cyanBg, other.cyanBg, t)!,
+      amber: Color.lerp(amber, other.amber, t)!,
+      amberBg: Color.lerp(amberBg, other.amberBg, t)!,
+      rose: Color.lerp(rose, other.rose, t)!,
+      roseBg: Color.lerp(roseBg, other.roseBg, t)!,
       isDark: t < 0.5 ? isDark : other.isDark,
     );
   }

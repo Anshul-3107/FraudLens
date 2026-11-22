@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../config/app_theme.dart';
 import '../models/transaction.dart';
 import '../providers/currency_provider.dart';
+import 'liquid_glass_card.dart';
 
 class TransactionCard extends StatelessWidget {
   final TransactionModel transaction;
@@ -21,57 +22,49 @@ class TransactionCard extends StatelessWidget {
     final isUnregistered =
         transaction.cardLabel.toLowerCase().contains('unregistered');
 
-    return InkWell(
+    final catColor = colors.getCategoryColor(transaction.category);
+    final catBg = colors.getCategoryBg(transaction.category);
+    final catIcon = colors.getCategoryIcon(transaction.category);
+
+    final Color iconBoxBg = isFlagged
+        ? colors.riskCriticalBg
+        : (transaction.isReceived ? colors.riskLowBg : catBg);
+
+    final Color iconColor = isFlagged
+        ? colors.riskCritical
+        : (transaction.isReceived ? colors.riskLow : catColor);
+
+    final IconData iconData = isFlagged
+        ? Icons.warning_amber_rounded
+        : (transaction.isReceived ? Icons.south_west_rounded : catIcon);
+
+    return LiquidGlassCard(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: colors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isFlagged
-                ? colors.riskCritical.withValues(alpha: 0.35)
-                : colors.border,
-            width: 1.0,
-          ),
-          boxShadow: colors.isDark
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.18),
-                    offset: const Offset(0, 1),
-                    blurRadius: 3,
-                  ),
-                ]
-              : null,
-        ),
-        child: Row(
+      borderRadius: 14,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      customBorder: Border.all(
+        color: isFlagged
+            ? colors.riskCritical.withValues(alpha: 0.50)
+            : (colors.isDark
+                ? Colors.white.withValues(alpha: 0.12)
+                : Colors.white.withValues(alpha: 0.65)),
+        width: 1.0,
+      ),
+      child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Transaction icon container (clean & restrained)
+            // Transaction icon container (tastefully colored category chip)
             Container(
-              width: 38,
-              height: 38,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
-                color: isFlagged
-                    ? colors.riskCriticalBg
-                    : (transaction.isReceived
-                        ? colors.riskLowBg
-                        : colors.surfaceSubtle),
-                borderRadius: BorderRadius.circular(10),
+                color: iconBoxBg,
+                borderRadius: BorderRadius.circular(11),
               ),
               child: Icon(
-                isFlagged
-                    ? Icons.warning_amber_rounded
-                    : (transaction.isReceived
-                        ? Icons.south_west_rounded
-                        : Icons.north_east_rounded),
-                size: 18,
-                color: isFlagged
-                    ? colors.riskCritical
-                    : (transaction.isReceived
-                        ? colors.riskLow
-                        : colors.textSecondary),
+                iconData,
+                size: 19,
+                color: iconColor,
               ),
             ),
             const SizedBox(width: 12),
@@ -208,7 +201,6 @@ class TransactionCard extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
+      );
+    }
   }
-}

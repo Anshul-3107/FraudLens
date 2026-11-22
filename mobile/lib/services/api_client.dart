@@ -147,6 +147,49 @@ class ApiClient {
     }
   }
 
+  Future<dynamic> delete(String url) async {
+    final uri = Uri.parse(url);
+    try {
+      final response = await http
+          .delete(uri, headers: _buildHeaders(isJson: true))
+          .timeout(defaultTimeout);
+      return _handleResponse(response);
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException(statusCode: 0, message: 'Network error: $e');
+    }
+  }
+
+  Future<dynamic> postMultipart(
+    String url, {
+    required String fileField,
+    required String filePath,
+    Map<String, String>? fields,
+  }) async {
+    final uri = Uri.parse(url);
+    try {
+      final request = http.MultipartRequest('POST', uri);
+      final headers = _buildHeaders(isJson: false);
+      request.headers.addAll(headers);
+
+      if (fields != null) {
+        request.fields.addAll(fields);
+      }
+
+      request.files.add(
+        await http.MultipartFile.fromPath(fileField, filePath),
+      );
+
+      final streamedResponse =
+          await request.send().timeout(const Duration(seconds: 30));
+      final response = await http.Response.fromStream(streamedResponse);
+      return _handleResponse(response);
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException(statusCode: 0, message: 'Upload error: $e');
+    }
+  }
+
   dynamic _handleResponse(http.Response response) {
     if (response.statusCode == 401) {
       onUnauthorized?.call();

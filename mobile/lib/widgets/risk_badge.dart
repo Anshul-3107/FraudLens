@@ -77,7 +77,7 @@ class RiskScoreBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: fg.withValues(alpha: 0.25), width: 1),
       ),
       child: Row(

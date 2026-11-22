@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../config/app_theme.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/liquid_glass_card.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -14,7 +15,6 @@ class RegisterScreen extends StatefulWidget {
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
-  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   bool _obscurePassword = true;
@@ -22,7 +22,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   void dispose() {
     _usernameController.dispose();
-    _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
@@ -34,9 +33,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final authProvider = context.read<AuthProvider>();
     final colors = AppColors.of(context);
     final success = await authProvider.register(
-      _usernameController.text,
+      _usernameController.text.trim(),
       _passwordController.text,
-      email: _emailController.text,
     );
 
     if (success && mounted) {
@@ -69,20 +67,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Container(
+                  LiquidGlassCard(
                     padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: colors.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: colors.borderSubtle, width: 1),
-                      boxShadow: [
-                        BoxShadow(
-                          color: colors.shadow,
-                          blurRadius: 4,
-                          offset: const Offset(0, 1),
-                        ),
-                      ],
-                    ),
+                    borderRadius: 16,
                     child: Form(
                       key: _formKey,
                       child: Column(
@@ -125,17 +112,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               }
                               return null;
                             },
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Email
-                          TextFormField(
-                            controller: _emailController,
-                            keyboardType: TextInputType.emailAddress,
-                            decoration: const InputDecoration(
-                              labelText: 'Email Address (Optional)',
-                              prefixIcon: Icon(Icons.email_outlined, size: 20),
-                            ),
                           ),
                           const SizedBox(height: 16),
 

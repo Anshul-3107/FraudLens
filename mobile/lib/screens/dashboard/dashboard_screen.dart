@@ -4,14 +4,15 @@ import 'package:provider/provider.dart';
 
 import '../../config/app_theme.dart';
 import '../../models/card.dart';
-import '../../providers/auth_provider.dart';
 import '../../providers/card_provider.dart';
 import '../../providers/currency_provider.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../widgets/error_view.dart';
+import '../../widgets/liquid_glass_card.dart';
 import '../../widgets/loading_indicator.dart';
 import '../../widgets/metric_card.dart';
 import '../../widgets/spend_chart.dart';
+import '../chat/richie_chat_sheet.dart';
 
 class DashboardScreen extends StatefulWidget {
   final Function(int tabIndex)? onNavigateTab;
@@ -189,7 +190,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
-    final authProvider = context.watch<AuthProvider>();
     final dashProvider = context.watch<DashboardProvider>();
     final currencyProvider = context.watch<CurrencyProvider>();
     final summary = dashProvider.summary;
@@ -217,33 +217,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
             const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'FraudLens',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.2,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (authProvider.user != null)
-                    Text(
-                      '${authProvider.user!.username}${authProvider.user!.isStaff ? " • Staff" : ""}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        color: colors.textMuted,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                ],
+            const Text(
+              'FraudLens',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.2,
               ),
             ),
           ],
@@ -281,6 +260,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+
                     // Active Filter Chips
                     if (dashProvider.hasActiveFilters) ...[
                       Container(
@@ -356,8 +336,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   : ((summary?.isSourceUsd ?? false) && currencyProvider.isConvertedFromUsd)
                                       ? 'Orig: \$${NumberFormat.compact().format(summary?.totalSpend ?? 0)} USD'
                                       : 'Aggregate transaction spend',
-                              icon: Icons.payments_outlined,
-                              iconColor: colors.primary,
+                              icon: Icons.payments_rounded,
+                              accentColor: colors.indigo,
+                              iconColor: colors.indigo,
+                              iconBg: colors.indigoBg,
                             ),
                             MetricCard(
                               title: 'Transactions',
@@ -367,8 +349,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               subtitle: (summary?.transactionCount ?? 0) == 0
                                   ? 'Awaiting first payment'
                                   : 'Processed records',
-                              icon: Icons.receipt_long_outlined,
-                              iconColor: colors.textSecondary,
+                              icon: Icons.receipt_long_rounded,
+                              accentColor: colors.cyan,
+                              iconColor: colors.cyan,
+                              iconBg: colors.cyanBg,
                               onTap: () => widget.onNavigateTab?.call(1),
                             ),
                             MetricCard(
@@ -380,6 +364,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   ? 'All clear'
                                   : 'Requiring review',
                               icon: Icons.warning_amber_rounded,
+                              accentColor: colors.riskCritical,
                               iconColor: colors.riskCritical,
                               iconBg: colors.riskCriticalBg,
                               onTap: () => widget.onNavigateTab?.call(2),
@@ -392,8 +377,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               subtitle: (summary?.alertsByStatus.inReview ?? 0) > 0
                                   ? '${summary?.alertsByStatus.inReview} in review'
                                   : '0 in review',
-                              icon: Icons.verified_user_outlined,
-                              iconColor: colors.riskLow,
+                              icon: Icons.verified_user_rounded,
+                              accentColor: colors.emerald,
+                              iconColor: colors.emerald,
                               iconBg: colors.riskLowBg,
                               onTap: () => widget.onNavigateTab?.call(2),
                             ),
@@ -405,25 +391,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     const SizedBox(height: 16),
 
                     // Monthly Spending Trends Chart Card
-                    Container(
+                    LiquidGlassCard(
                       padding: const EdgeInsets.all(18),
-                      decoration: BoxDecoration(
-                        color: colors.surface,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: colors.border,
-                          width: 1,
-                        ),
-                        boxShadow: colors.isDark
-                            ? [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.2),
-                                  offset: const Offset(0, 2),
-                                  blurRadius: 4,
-                                ),
-                              ]
-                            : null,
-                      ),
+                      borderRadius: 14,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -516,6 +486,49 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
             ),
+      floatingActionButton: Container(
+        decoration: BoxDecoration(
+          color: colors.primary,
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.25),
+              offset: const Offset(0, 3),
+              blurRadius: 6,
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => RichieChatSheet.show(context),
+            borderRadius: BorderRadius.circular(28),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.auto_awesome_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'Ask Richie',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

@@ -6,6 +6,7 @@ import 'config/app_theme.dart';
 import 'providers/alert_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/card_provider.dart';
+import 'providers/chat_provider.dart';
 import 'providers/currency_provider.dart';
 import 'providers/dashboard_provider.dart';
 import 'providers/investigation_provider.dart';
@@ -30,6 +31,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => AlertProvider()),
         ChangeNotifierProvider(create: (_) => InvestigationProvider()),
         ChangeNotifierProvider(create: (_) => CardProvider()),
+        ChangeNotifierProvider(create: (_) => ChatProvider()),
       ],
       child: const FraudLensApp(),
     ),

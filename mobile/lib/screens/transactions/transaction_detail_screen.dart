@@ -10,6 +10,7 @@ import '../../services/alert_service.dart';
 import '../../widgets/risk_badge.dart';
 import '../../widgets/shap_factor_card.dart';
 import '../alerts/alert_detail_screen.dart';
+import '../chat/richie_chat_sheet.dart';
 
 class TransactionDetailScreen extends StatefulWidget {
   final TransactionModel transaction;
@@ -104,7 +105,24 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
 
     return Scaffold(
       backgroundColor: colors.background,
-      appBar: AppBar(title: const Text('Transaction Details')),
+      appBar: AppBar(
+        title: const Text('Transaction Details'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.auto_awesome_rounded, color: colors.tealPrimary, size: 20),
+            tooltip: 'Ask Richie',
+            onPressed: () {
+              final amt = '₹${txn.amount.toStringAsFixed(2)}';
+              final status = txn.hasAlert ? 'which was flagged as suspicious' : 'which was marked safe';
+              RichieChatSheet.show(
+                context,
+                initialPrompt:
+                    'Can you give me security details about Txn #${txn.id} ($amt at ${txn.merchant}, $status)?',
+              );
+            },
+          ),
+        ],
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(

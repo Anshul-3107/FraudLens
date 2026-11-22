@@ -158,6 +158,32 @@ class FraudLensBackendTests(TestCase):
         self.assertEqual(response.data["email"], "test@example.com")
         self.assertEqual(response.data["card_count"], 1)
 
+    def test_avatar_upload_and_delete(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        self.authenticate()
+
+        small_gif = (
+            b'\x47\x49\x46\x38\x39\x61\x01\x00\x01\x00\x00\x00\x00\x21\xf9\x04'
+            b'\x01\x00\x00\x00\x00\x2c\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02'
+            b'\x02\x44\x01\x00\x3b'
+        )
+        avatar = SimpleUploadedFile("avatar.gif", small_gif, content_type="image/gif")
+
+        res = self.client.post("/api/auth/avatar/", {"avatar": avatar}, format="multipart")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn("avatar_url", res.data)
+        self.assertIsNotNone(res.data["avatar_url"])
+
+        me_res = self.client.get("/api/auth/me/")
+        self.assertEqual(me_res.status_code, status.HTTP_200_OK)
+        self.assertIsNotNone(me_res.data["avatar_url"])
+
+        del_res = self.client.delete("/api/auth/avatar/")
+        self.assertEqual(del_res.status_code, status.HTTP_200_OK)
+
+        me_after = self.client.get("/api/auth/me/")
+        self.assertIsNone(me_after.data["avatar_url"])
+
     # ---------------------------------------------------------
     # Cards and transaction access control
     # ---------------------------------------------------------

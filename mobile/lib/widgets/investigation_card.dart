@@ -21,22 +21,14 @@ class InvestigationCard extends StatelessWidget {
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(14),
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: colors.surface,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(color: colors.border, width: 1),
-          boxShadow: colors.isDark
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.18),
-                    offset: const Offset(0, 1),
-                    blurRadius: 3,
-                  ),
-                ]
-              : null,
+          boxShadow: colors.cardShadow,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

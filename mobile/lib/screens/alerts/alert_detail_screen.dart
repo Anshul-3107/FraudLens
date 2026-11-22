@@ -11,6 +11,7 @@ import '../../providers/dashboard_provider.dart';
 import '../../providers/investigation_provider.dart';
 import '../../widgets/risk_badge.dart';
 import '../../widgets/shap_factor_card.dart';
+import '../chat/richie_chat_sheet.dart';
 
 class AlertDetailScreen extends StatefulWidget {
   final AlertModel alert;
@@ -148,6 +149,19 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
       appBar: AppBar(
         title: Text('Alert #${alert.id}'),
         actions: [
+          IconButton(
+            icon: Icon(Icons.auto_awesome_rounded, color: colors.tealPrimary, size: 20),
+            tooltip: 'Ask Richie',
+            onPressed: () {
+              final merchant = txn?.merchant ?? 'this transaction';
+              final amt = txn != null ? '₹${txn.amount.toStringAsFixed(2)}' : '';
+              RichieChatSheet.show(
+                context,
+                initialPrompt:
+                    'Why was Alert #${alert.id} ($amt at $merchant) flagged with a fraud risk score of ${(alert.score * 100).toStringAsFixed(0)}%?',
+              );
+            },
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: Center(child: AlertStatusBadge(status: alert.status)),

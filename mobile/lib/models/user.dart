@@ -4,6 +4,7 @@ class UserMe {
   final String email;
   final bool isStaff;
   final int cardCount;
+  final String? avatarUrl;
 
   UserMe({
     required this.id,
@@ -11,6 +12,7 @@ class UserMe {
     required this.email,
     required this.isStaff,
     required this.cardCount,
+    this.avatarUrl,
   });
 
   factory UserMe.fromJson(Map<String, dynamic> json) {
@@ -20,6 +22,7 @@ class UserMe {
       email: json['email'] as String? ?? '',
       isStaff: json['is_staff'] as bool? ?? false,
       cardCount: json['card_count'] as int? ?? 0,
+      avatarUrl: json['avatar_url'] as String?,
     );
   }
 
@@ -29,6 +32,7 @@ class UserMe {
     'email': email,
     'is_staff': isStaff,
     'card_count': cardCount,
+    'avatar_url': avatarUrl,
   };
 }
 

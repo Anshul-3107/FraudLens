@@ -124,22 +124,29 @@ class MonthlySpendChart extends StatelessWidget {
               isCurved: true,
               curveSmoothness: 0.35,
               color: colors.tealPrimary,
-              barWidth: 2,
+              barWidth: 2.5,
               isStrokeCapRound: true,
               dotData: FlDotData(
                 show: true,
                 getDotPainter: (spot, percent, barData, index) =>
                     FlDotCirclePainter(
-                      radius: 3,
+                      radius: 3.5,
                       color: colors.tealPrimary,
-                      strokeWidth: 1.5,
+                      strokeWidth: 2,
                       strokeColor: colors.surface,
                     ),
               ),
               belowBarData: BarAreaData(
                 show: true,
-                color: colors.tealPrimary.withValues(
-                  alpha: colors.isDark ? 0.12 : 0.06,
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    colors.tealPrimary.withValues(
+                      alpha: colors.isDark ? 0.28 : 0.16,
+                    ),
+                    colors.tealPrimary.withValues(alpha: 0.0),
+                  ],
                 ),
               ),
             ),
@@ -181,8 +188,12 @@ class CategorySpendBreakdown extends StatelessWidget {
     return Column(
       children: topCategories.map((c) {
         final progress = (c.total / maxTotal).clamp(0.02, 1.0);
+        final catColor = colors.getCategoryColor(c.category);
+        final catIcon = colors.getCategoryIcon(c.category);
+        final catBg = colors.getCategoryBg(c.category);
+
         return Padding(
-          padding: const EdgeInsets.only(bottom: 10.0),
+          padding: const EdgeInsets.only(bottom: 12.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -190,16 +201,31 @@ class CategorySpendBreakdown extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Expanded(
-                    child: Text(
-                      c.formattedCategory,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: colors.textPrimary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: -0.1,
-                      ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: catBg,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Icon(catIcon, size: 13, color: catColor),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            c.formattedCategory,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: colors.textPrimary,
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: -0.1,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -207,20 +233,22 @@ class CategorySpendBreakdown extends StatelessWidget {
                     '${currencyProvider.format(c.total, decimalDigits: 0)} (${c.count} txns)',
                     style: TextStyle(
                       color: colors.textSecondary,
-                      fontSize: 11,
+                      fontSize: 11.5,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 5),
+              const SizedBox(height: 6),
               ClipRRect(
-                borderRadius: BorderRadius.circular(2),
+                borderRadius: BorderRadius.circular(4),
                 child: LinearProgressIndicator(
                   value: progress,
-                  backgroundColor: colors.surfaceMuted,
-                  valueColor: AlwaysStoppedAnimation<Color>(colors.tealPrimary),
-                  minHeight: 4,
+                  backgroundColor: catColor.withValues(
+                    alpha: colors.isDark ? 0.14 : 0.08,
+                  ),
+                  valueColor: AlwaysStoppedAnimation<Color>(catColor),
+                  minHeight: 5,
                 ),
               ),
             ],

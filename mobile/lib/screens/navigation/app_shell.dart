@@ -317,6 +317,13 @@ class _AppShellState extends State<AppShell> {
       decoration: BoxDecoration(
         color: colors.surface,
         border: Border(top: BorderSide(color: colors.border, width: 1)),
+        boxShadow: [
+          BoxShadow(
+            color: colors.isDark ? Colors.black38 : const Color(0x0A0F172A),
+            offset: const Offset(0, -2),
+            blurRadius: 8,
+          ),
+        ],
       ),
       child: SafeArea(
         top: false,
@@ -401,9 +408,17 @@ class _AppShellState extends State<AppShell> {
                   ),
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? colors.primary.withValues(alpha: 0.14)
+                        ? (colors.isDark
+                            ? colors.primary.withValues(alpha: 0.18)
+                            : colors.primary.withValues(alpha: 0.12))
                         : Colors.transparent,
                     borderRadius: BorderRadius.circular(16),
+                    border: isSelected
+                        ? Border.all(
+                            color: colors.primary.withValues(alpha: 0.35),
+                            width: 1,
+                          )
+                        : Border.all(color: Colors.transparent, width: 1),
                   ),
                   child: iconWidget,
                 ),
@@ -416,7 +431,7 @@ class _AppShellState extends State<AppShell> {
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                    color: isSelected ? colors.textPrimary : colors.textMuted,
+                    color: isSelected ? colors.primary : colors.textMuted,
                     letterSpacing: -0.1,
                   ),
                 ),

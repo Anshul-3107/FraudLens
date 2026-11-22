@@ -8,6 +8,9 @@ python-dotenv==1.2.4
 psycopg[binary]==3.3.6
 gunicorn>=23.0.0
 dj-database-url>=2.3.0
+requests>=2.31.0
+Pillow>=10.0.0
+whitenoise>=6.6.0
 
 # Production ML Inference Runtime
 joblib==1.6.0

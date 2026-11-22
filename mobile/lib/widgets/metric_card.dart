@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../config/app_theme.dart';
+import 'liquid_glass_card.dart';
 
 class MetricCard extends StatelessWidget {
   final String title;
@@ -9,6 +10,7 @@ class MetricCard extends StatelessWidget {
   final IconData icon;
   final Color? iconColor;
   final Color? iconBg;
+  final Color? accentColor;
   final VoidCallback? onTap;
 
   const MetricCard({
@@ -19,43 +21,24 @@ class MetricCard extends StatelessWidget {
     required this.icon,
     this.iconColor,
     this.iconBg,
+    this.accentColor,
     this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
-    final effectiveIconColor = iconColor ?? colors.tealPrimary;
+    final effectiveAccent = accentColor ?? iconColor ?? colors.tealPrimary;
+    final effectiveIconColor = iconColor ?? effectiveAccent;
     final effectiveIconBg = iconBg ??
         (colors.isDark
-            ? colors.surfaceSubtle
-            : effectiveIconColor.withValues(alpha: 0.08));
+            ? effectiveAccent.withValues(alpha: 0.16)
+            : effectiveAccent.withValues(alpha: 0.10));
 
-    return InkWell(
+    return LiquidGlassCard(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: colors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: colors.border, width: 1),
-          boxShadow: colors.isDark
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.25),
-                    offset: const Offset(0, 2),
-                    blurRadius: 4,
-                  ),
-                ]
-              : [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    offset: const Offset(0, 2),
-                    blurRadius: 6,
-                  ),
-                ],
-        ),
+      borderRadius: 16,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -70,7 +53,7 @@ class MetricCard extends StatelessWidget {
                     style: TextStyle(
                       color: colors.textSecondary,
                       fontSize: 12,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w600,
                       letterSpacing: 0.1,
                     ),
                     maxLines: 1,
@@ -79,16 +62,20 @@ class MetricCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 6),
                 Container(
-                  padding: const EdgeInsets.all(5),
+                  padding: const EdgeInsets.all(7),
                   decoration: BoxDecoration(
                     color: effectiveIconBg,
-                    borderRadius: BorderRadius.circular(7),
+                    borderRadius: BorderRadius.circular(9),
+                    border: Border.all(
+                      color: effectiveIconColor.withValues(alpha: 0.25),
+                      width: 1,
+                    ),
                   ),
-                  child: Icon(icon, size: 15, color: effectiveIconColor),
+                  child: Icon(icon, size: 16, color: effectiveIconColor),
                 ),
               ],
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
             Flexible(
               child: FittedBox(
                 fit: BoxFit.scaleDown,
@@ -97,7 +84,7 @@ class MetricCard extends StatelessWidget {
                   value,
                   style: TextStyle(
                     color: colors.textPrimary,
-                    fontSize: 20,
+                    fontSize: 21,
                     fontWeight: FontWeight.w700,
                     letterSpacing: -0.4,
                   ),
@@ -106,7 +93,7 @@ class MetricCard extends StatelessWidget {
               ),
             ),
             if (subtitle != null) ...[
-              const SizedBox(height: 2),
+              const SizedBox(height: 3),
               Text(
                 subtitle!,
                 style: TextStyle(
@@ -120,7 +107,6 @@ class MetricCard extends StatelessWidget {
             ],
           ],
         ),
-      ),
-    );
+      );
+    }
   }
-}

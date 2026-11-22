@@ -124,6 +124,23 @@ class AuthService {
     return user;
   }
 
+  Future<String?> uploadAvatar(String filePath) async {
+    final response = await _client.postMultipart(
+      ApiConfig.avatarUrl,
+      fileField: 'avatar',
+      filePath: filePath,
+    );
+    final map = response as Map<String, dynamic>;
+    final avatarUrl = map['avatar_url'] as String?;
+    await getMe();
+    return avatarUrl;
+  }
+
+  Future<void> deleteAvatar() async {
+    await _client.delete(ApiConfig.avatarUrl);
+    await getMe();
+  }
+
   Future<void> logout() async {
     try {
       if (_client.isAuthenticated) {

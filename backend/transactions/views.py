@@ -14,12 +14,13 @@ from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.decorators import action
 from rest_framework.exceptions import ParseError, ValidationError
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from .ingest import ingest_transaction
-from .models import Alert, Card, Investigation, PhoneVerification, Transaction, UserBehaviorProfile
+from .models import Alert, Card, Investigation, PhoneVerification, Transaction, UserBehaviorProfile, UserProfile
 from .permissions import IsOwnerOrStaff
 from .sms_service import generate_otp_code, hash_otp, send_live_sms
 from .serializers import (
@@ -307,13 +308,56 @@ class LogoutView(APIView):
 class MeView(APIView):
     def get(self, request):
         user = request.user
+        avatar_url = None
+        if hasattr(user, "profile") and user.profile.avatar:
+            avatar_url = request.build_absolute_uri(user.profile.avatar.url)
         return Response({
             "id": user.id,
             "username": user.username,
             "email": user.email,
             "is_staff": user.is_staff,
             "card_count": visible_cards(user).count(),
+            "avatar_url": avatar_url,
         })
+
+
+class AvatarUploadView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request):
+        avatar_file = request.FILES.get("avatar")
+        if not avatar_file:
+            return Response(
+                {"error": "No image file provided under 'avatar'."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        # Limit size to 10MB
+        if avatar_file.size > 10 * 1024 * 1024:
+            return Response(
+                {"error": "Image file too large. Max size is 10MB."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        profile, _ = UserProfile.objects.get_or_create(user=request.user)
+        if profile.avatar:
+            profile.avatar.delete(save=False)
+
+        profile.avatar = avatar_file
+        profile.save()
+        avatar_url = request.build_absolute_uri(profile.avatar.url)
+        return Response({
+            "message": "Avatar uploaded successfully.",
+            "avatar_url": avatar_url,
+        }, status=status.HTTP_200_OK)
+
+    def delete(self, request):
+        if hasattr(request.user, "profile") and request.user.profile.avatar:
+            request.user.profile.avatar.delete(save=True)
+        return Response({
+            "message": "Avatar removed successfully.",
+            "avatar_url": None,
+        }, status=status.HTTP_200_OK)
 
 
 # ---------------------------------------------------------------- data
@@ -812,3 +856,33 @@ class ExchangeRatesView(APIView):
         # Cache payload
         cache.set(self._CACHE_KEY, payload, timeout=self._CACHE_TTL_SECONDS)
         return Response(payload)
+
+
+class RichieChatView(APIView):
+    """Conversational endpoint for Richie, the FraudLens AI assistant."""
+    permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "user"
+
+    def post(self, request):
+        message = request.data.get("message", "").strip()
+        if not message:
+            return Response(
+                {"error": "Message cannot be empty."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        history = request.data.get("history", [])
+        from .chat_service import ask_richie
+
+        reply = ask_richie(
+            user=request.user,
+            user_message=message,
+            chat_history=history,
+        )
+
+        return Response({
+            "reply": reply,
+            "sender": "richie",
+            "timestamp": timezone.now().isoformat(),
+        })

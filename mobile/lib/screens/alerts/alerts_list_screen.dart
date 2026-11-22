@@ -389,6 +389,12 @@ class _AlertsListScreenState extends State<AlertsListScreen> {
                             ? alert.reasons.first
                             : null;
 
+                        final riskAccent = alert.score >= 0.80
+                            ? colors.riskCritical
+                            : (alert.score >= alert.threshold
+                                ? colors.riskHigh
+                                : colors.riskMedium);
+
                         return InkWell(
                           onTap: () {
                             Navigator.push(
@@ -398,15 +404,19 @@ class _AlertsListScreenState extends State<AlertsListScreen> {
                               ),
                             );
                           },
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(14),
+                          splashColor: riskAccent.withValues(alpha: 0.08),
+                          highlightColor: riskAccent.withValues(alpha: 0.04),
                           child: Container(
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
                               color: colors.surface,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: colors.riskCritical.withValues(alpha: 0.25),
-                                width: 1.0,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border(
+                                left: BorderSide(color: riskAccent, width: 4),
+                                top: BorderSide(color: colors.border, width: 1),
+                                right: BorderSide(color: colors.border, width: 1),
+                                bottom: BorderSide(color: colors.border, width: 1),
                               ),
                               boxShadow: colors.cardShadow,
                             ),
@@ -702,21 +712,42 @@ class _StatusFilterChip extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: isSelected ? effectiveColor : colors.surfaceSubtle,
-          borderRadius: BorderRadius.circular(16),
+          color: isSelected
+              ? effectiveColor.withValues(alpha: colors.isDark ? 0.22 : 0.12)
+              : colors.surfaceSubtle,
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected ? effectiveColor : colors.border,
+            color: isSelected
+                ? effectiveColor
+                : colors.borderSubtle,
+            width: isSelected ? 1.5 : 1.0,
           ),
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.white : colors.textSecondary,
-            fontSize: 12,
-            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isSelected) ...[
+              Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: effectiveColor,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 6),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? effectiveColor : colors.textSecondary,
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
+          ],
         ),
       ),
     );
