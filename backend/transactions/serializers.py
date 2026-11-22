@@ -55,7 +55,7 @@ class TransactionSerializer(serializers.ModelSerializer):
         fields = [
             "id", "trans_ref", "card", "card_label", "occurred_at",
             "merchant", "category", "amount", "source", "currency",
-            "txn_type", "has_alert",
+            "txn_type", "has_alert", "merch_lat", "merch_long",
         ]
 
 

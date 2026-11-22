@@ -455,6 +455,11 @@ class TransactionViewSet(
                 )
 
         supplied_ref = data.get("trans_ref")
+        if card.home_lat is None and data.get("merch_lat") is not None and data.get("merch_long") is not None:
+            card.home_lat = data["merch_lat"]
+            card.home_long = data["merch_long"]
+            card.save(update_fields=["home_lat", "home_long"])
+
         try:
             txn, alert, result = ingest_transaction(
                 card=card,
@@ -638,14 +643,24 @@ class TransactionViewSet(
                 status=status.HTTP_200_OK,
             )
 
+        parsed_lat = float(merch_lat) if merch_lat is not None else None
+        parsed_long = float(merch_long) if merch_long is not None else None
+        if matched_card.home_lat is None and parsed_lat is not None and parsed_long is not None:
+            try:
+                matched_card.home_lat = parsed_lat
+                matched_card.home_long = parsed_long
+                matched_card.save(update_fields=["home_lat", "home_long"])
+            except Exception:
+                pass
+
         txn, alert, result = ingest_transaction(
             card=matched_card,
             occurred_at=occurred_at,
             merchant=merchant,
             category=category,
             amount=amount,
-            merch_lat=float(merch_lat) if merch_lat is not None else None,
-            merch_long=float(merch_long) if merch_long is not None else None,
+            merch_lat=parsed_lat,
+            merch_long=parsed_long,
             source=txn_source,
             currency=currency,
             txn_type=txn_type,

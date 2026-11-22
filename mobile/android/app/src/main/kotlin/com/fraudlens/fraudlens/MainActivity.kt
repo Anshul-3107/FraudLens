@@ -15,9 +15,15 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
+import android.location.Geocoder
+import android.location.Location
+import android.location.LocationManager
+import java.util.Locale
+
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.fraudlens.fraudlens/notification_listener"
     private val SMS_PERMISSION_REQUEST_CODE = 101
+    private val LOCATION_PERMISSION_REQUEST_CODE = 102
     private var notificationReceiver: BroadcastReceiver? = null
     private var smsBroadcastReceiver: BroadcastReceiver? = null
 
@@ -49,6 +55,29 @@ class MainActivity : FlutterActivity() {
                         SMS_PERMISSION_REQUEST_CODE
                     )
                     result.success(true)
+                }
+                "isLocationPermissionGranted" -> {
+                    val hasFine = ContextCompat.checkSelfPermission(
+                        this, Manifest.permission.ACCESS_FINE_LOCATION
+                    ) == PackageManager.PERMISSION_GRANTED
+                    val hasCoarse = ContextCompat.checkSelfPermission(
+                        this, Manifest.permission.ACCESS_COARSE_LOCATION
+                    ) == PackageManager.PERMISSION_GRANTED
+                    result.success(hasFine || hasCoarse)
+                }
+                "requestLocationPermission" -> {
+                    ActivityCompat.requestPermissions(
+                        this,
+                        arrayOf(
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION
+                        ),
+                        LOCATION_PERMISSION_REQUEST_CODE
+                    )
+                    result.success(true)
+                }
+                "getCurrentLocation" -> {
+                    result.success(getLocationDetails())
                 }
                 else -> result.notImplemented()
             }
@@ -114,5 +143,52 @@ class MainActivity : FlutterActivity() {
     private fun isNotificationServiceEnabled(): Boolean {
         val flat = Settings.Secure.getString(contentResolver, "enabled_notification_listeners")
         return flat != null && flat.contains(packageName)
+    }
+
+    private fun getBestLocation(): Location? {
+        val locationManager = getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return null
+        val hasFine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        val hasCoarse = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        if (!hasFine && !hasCoarse) return null
+
+        var bestLocation: Location? = null
+        val providers = locationManager.getProviders(true)
+        for (provider in providers) {
+            val l = try {
+                locationManager.getLastKnownLocation(provider)
+            } catch (e: SecurityException) {
+                null
+            }
+            if (l != null) {
+                if (bestLocation == null || l.accuracy < bestLocation.accuracy) {
+                    bestLocation = l
+                }
+            }
+        }
+        return bestLocation
+    }
+
+    private fun getLocationDetails(): Map<String, Any?> {
+        val loc = getBestLocation() ?: return emptyMap()
+        var city = ""
+        var addressLine = ""
+        try {
+            val geocoder = Geocoder(this, Locale.getDefault())
+            @Suppress("DEPRECATION")
+            val addresses = geocoder.getFromLocation(loc.latitude, loc.longitude, 1)
+            if (!addresses.isNullOrEmpty()) {
+                val addr = addresses[0]
+                city = addr.locality ?: addr.subAdminArea ?: addr.adminArea ?: ""
+                addressLine = addr.getAddressLine(0) ?: ""
+            }
+        } catch (e: Exception) {
+            // Geocoder service may be offline or unavailable
+        }
+        return mapOf(
+            "latitude" to loc.latitude,
+            "longitude" to loc.longitude,
+            "city" to city,
+            "address" to addressLine
+        )
     }
 }

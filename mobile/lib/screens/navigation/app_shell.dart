@@ -54,6 +54,11 @@ class _AppShellState extends State<AppShell> {
       if (!granted && mounted) {
         _showNotificationPermissionBanner();
       }
+      final locGranted =
+          await NotificationListenerService.instance.isLocationPermissionGranted();
+      if (!locGranted) {
+        await NotificationListenerService.instance.requestLocationPermission();
+      }
     });
   }
 
@@ -64,6 +69,21 @@ class _AppShellState extends State<AppShell> {
     final cardProvider = context.read<CardProvider>();
 
     try {
+      // Auto-capture device GPS location at the instant payment is detected
+      Map<String, dynamic>? locationData;
+      try {
+        locationData =
+            await NotificationListenerService.instance.getCurrentLocation();
+      } catch (_) {}
+
+      final double? lat = locationData != null && locationData['latitude'] is num
+          ? (locationData['latitude'] as num).toDouble()
+          : null;
+      final double? lon = locationData != null && locationData['longitude'] is num
+          ? (locationData['longitude'] as num).toDouble()
+          : null;
+      final String? locName = locationData?['city'] as String?;
+
       final res = await txnProvider.processNotification(
         amount: upiPayment.amount,
         merchant: upiPayment.merchant,
@@ -74,6 +94,9 @@ class _AppShellState extends State<AppShell> {
         source: upiPayment.source,
         txnType: upiPayment.txnType,
         currency: upiPayment.currency,
+        merchLat: lat,
+        merchLong: lon,
+        locationName: locName,
       );
 
       final scoring = res['scoring'] as Map<String, dynamic>? ?? {};

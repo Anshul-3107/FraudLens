@@ -348,6 +348,12 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                     'Date & Time',
                     dateFormat.format(txn.occurredAt),
                   ),
+                  if (txn.merchLat != null && txn.merchLong != null)
+                    _buildDetailRow(
+                      context,
+                      'Location (GPS)',
+                      '${txn.merchLat!.toStringAsFixed(4)}°, ${txn.merchLong!.toStringAsFixed(4)}°',
+                    ),
                 ],
               ),
             ),

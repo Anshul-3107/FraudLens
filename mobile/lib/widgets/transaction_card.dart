@@ -143,14 +143,29 @@ class TransactionCard extends StatelessWidget {
                         ),
                       ],
                       Expanded(
-                        child: Text(
-                          '${transaction.formattedCategory} • ${dateFormat.format(transaction.occurredAt)}',
-                          style: TextStyle(
-                            color: colors.textMuted,
-                            fontSize: 11.5,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        child: Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                '${transaction.formattedCategory} • ${dateFormat.format(transaction.occurredAt)}',
+                                style: TextStyle(
+                                  color: colors.textMuted,
+                                  fontSize: 11.5,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (transaction.merchLat != null &&
+                                transaction.merchLong != null) ...[
+                              const SizedBox(width: 4),
+                              Icon(
+                                Icons.location_on_rounded,
+                                size: 12,
+                                color: colors.primary,
+                              ),
+                            ],
+                          ],
                         ),
                       ),
                     ],

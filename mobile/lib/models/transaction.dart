@@ -13,6 +13,8 @@ class TransactionModel {
   final bool hasAlert;
   final String txnType;
   final String currency;
+  final double? merchLat;
+  final double? merchLong;
 
   TransactionModel({
     required this.id,
@@ -27,6 +29,8 @@ class TransactionModel {
     required this.hasAlert,
     this.txnType = 'sent',
     String? currency,
+    this.merchLat,
+    this.merchLong,
   }) : currency = currency ?? (source == 'simulated' ? 'USD' : 'INR');
 
   bool get isReceived => txnType.toLowerCase() == 'received';
@@ -53,6 +57,8 @@ class TransactionModel {
       hasAlert: json['has_alert'] as bool? ?? false,
       txnType: rawType,
       currency: rawCurr,
+      merchLat: json['merch_lat'] != null ? _parseDouble(json['merch_lat']) : null,
+      merchLong: json['merch_long'] != null ? _parseDouble(json['merch_long']) : null,
     );
   }
 

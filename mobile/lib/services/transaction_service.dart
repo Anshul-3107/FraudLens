@@ -74,6 +74,9 @@ class TransactionService {
     String source = 'notification',
     String txnType = 'sent',
     String currency = 'INR',
+    double? merchLat,
+    double? merchLong,
+    String? locationName,
   }) async {
     final body = <String, dynamic>{
       'amount': amount,
@@ -85,6 +88,9 @@ class TransactionService {
       'source': source,
       'txn_type': txnType,
       'currency': currency,
+      if (merchLat != null) 'merch_lat': merchLat,
+      if (merchLong != null) 'merch_long': merchLong,
+      if (locationName != null && locationName.isNotEmpty) 'location': locationName,
     };
     final response = await _client.post(
       ApiConfig.processNotificationUrl,

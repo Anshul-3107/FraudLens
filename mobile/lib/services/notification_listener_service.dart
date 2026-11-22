@@ -77,6 +77,37 @@ class NotificationListenerService {
     } catch (_) {}
   }
 
+  /// Check if Location permission is granted
+  Future<bool> isLocationPermissionGranted() async {
+    try {
+      final granted =
+          await _channel.invokeMethod<bool>('isLocationPermissionGranted');
+      return granted ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Request Location permission dialog
+  Future<void> requestLocationPermission() async {
+    try {
+      await _channel.invokeMethod('requestLocationPermission');
+    } catch (_) {}
+  }
+
+  /// Get current GPS location and city name from device LocationManager
+  Future<Map<String, dynamic>?> getCurrentLocation() async {
+    try {
+      final res = await _channel.invokeMethod('getCurrentLocation');
+      if (res is Map) {
+        return Map<String, dynamic>.from(res);
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   void dispose() {
     _notificationController.close();
   }

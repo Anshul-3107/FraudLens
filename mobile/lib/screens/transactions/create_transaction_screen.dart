@@ -8,6 +8,7 @@ import '../../providers/card_provider.dart';
 import '../../providers/currency_provider.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../providers/transaction_provider.dart';
+import '../../services/notification_listener_service.dart';
 import '../../widgets/risk_badge.dart';
 import '../../widgets/shap_factor_card.dart';
 
@@ -32,6 +33,8 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
 
   final DateTime _occurredAt = DateTime.now();
   bool _submitting = false;
+  bool _fetchingLocation = false;
+  String _detectedCity = '';
   TransactionCreateResponse? _result;
 
   @override
@@ -40,6 +43,34 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
     final cardProvider = context.read<CardProvider>();
     if (cardProvider.cards.isNotEmpty) {
       _selectedCard = cardProvider.cards.first;
+    }
+    _detectLocation();
+  }
+
+  Future<void> _detectLocation() async {
+    setState(() => _fetchingLocation = true);
+    try {
+      final loc =
+          await NotificationListenerService.instance.getCurrentLocation();
+      if (loc != null && loc['latitude'] != null && loc['longitude'] != null) {
+        final lat = (loc['latitude'] as num).toDouble();
+        final lon = (loc['longitude'] as num).toDouble();
+        _latController.text = lat.toStringAsFixed(6);
+        _longController.text = lon.toStringAsFixed(6);
+        final city = (loc['city'] as String? ?? '').isNotEmpty
+            ? loc['city'] as String
+            : (loc['address'] as String? ?? '');
+        if (mounted) {
+          setState(() {
+            _detectedCity = city;
+          });
+        }
+      }
+    } catch (_) {
+    } finally {
+      if (mounted) {
+        setState(() => _fetchingLocation = false);
+      }
     }
   }
 
@@ -417,7 +448,37 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
                         prefixIcon: Icon(Icons.tag_rounded, size: 20),
                       ),
                     ),
-                    const SizedBox(height: 14),
+                    // Location & Geo Coordinates Header
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Location & Coordinates',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                        TextButton.icon(
+                          onPressed: _fetchingLocation ? null : _detectLocation,
+                          icon: _fetchingLocation
+                              ? const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.my_location_rounded, size: 16),
+                          label: Text(
+                            _detectedCity.isNotEmpty
+                                ? _detectedCity
+                                : 'Detect GPS',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
 
                     // Geo Coordinates
                     Row(
