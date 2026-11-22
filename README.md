@@ -119,7 +119,6 @@ FraudLens utilizes a multi-tiered decision engine trained and benchmarked agains
 ### Database & Cloud
 - **Database:** PostgreSQL (with `dj-database-url` and connection pooling)
 - **Hosting:** [Railway](https://railway.com/) Container Infrastructure (Linux Docker runtime)
-- **SMS Gateway:** [Fast2SMS](https://www.fast2sms.com/) Indian Telecom API
 - **LLM / Conversational AI:** Google Gemini Nano / Pro via Gemini API
 
 ---
