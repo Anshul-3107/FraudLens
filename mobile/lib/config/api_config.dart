@@ -32,9 +32,9 @@ class ApiConfig {
       if (_useAndroidEmulator) {
         return 'http://10.0.2.2:8000';
       }
-      return 'http://127.0.0.1:8000';
+      return productionBaseUrl;
     }
-    return 'http://127.0.0.1:8000';
+    return productionBaseUrl;
   }
 
   static String _activeBaseUrl = '';
@@ -49,11 +49,13 @@ class ApiConfig {
   static Future<void> initialize() async {
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString(_kPrefBaseUrlKey);
-    // If a physical Android device had previously saved the obsolete 10.0.2.2 default,
-    // clear it so it transparently updates to the USB-forwarded 127.0.0.1 endpoint.
+    // If a physical Android device had previously saved a local development endpoint
+    // (10.0.2.2 or 127.0.0.1), clear it so it transparently connects to the live production Railway endpoint.
     if (saved != null &&
-        saved.trim() == 'http://10.0.2.2:8000' &&
-        !_useAndroidEmulator) {
+        (saved.trim() == 'http://10.0.2.2:8000' ||
+         saved.trim() == 'http://127.0.0.1:8000' ||
+         saved.trim().contains('localhost')) &&
+        (kReleaseMode || !_useAndroidEmulator)) {
       await prefs.remove(_kPrefBaseUrlKey);
       _activeBaseUrl = defaultBaseUrl;
     } else if (saved != null && saved.trim().isNotEmpty) {
