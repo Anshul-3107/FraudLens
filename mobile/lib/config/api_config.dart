@@ -4,6 +4,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ApiConfig {
   static const String _kPrefBaseUrlKey = 'fraudlens_api_base_url';
 
+  // Live Railway production backend endpoint
+  static const String productionBaseUrl =
+      'https://fraudlens-production-b8753820.up.railway.app';
+
   // Build-time override via --dart-define=API_BASE_URL=https://...
   static const String _dartDefineBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
@@ -19,6 +23,9 @@ class ApiConfig {
   static String get defaultBaseUrl {
     if (_dartDefineBaseUrl.isNotEmpty) {
       return _dartDefineBaseUrl;
+    }
+    if (kReleaseMode) {
+      return productionBaseUrl;
     }
     // Android emulator loopback vs physical Android device over USB reverse forwarding
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
