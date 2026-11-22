@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../config/api_config.dart';
 import '../../config/app_theme.dart';
 import '../../providers/auth_provider.dart';
-import '../../services/auth_service.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -25,146 +23,6 @@ class _LoginScreenState extends State<LoginScreen> {
     _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
-  }
-
-  void _showServerConfigDialog() {
-    final colors = AppColors.of(context);
-    final controller = TextEditingController(text: ApiConfig.baseUrl);
-    bool testingHealth = false;
-    String? testResult;
-    bool isHealthy = false;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          return AlertDialog(
-            backgroundColor: colors.surface,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(color: colors.borderSubtle),
-            ),
-            title: Text(
-              'Backend Server URL',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: colors.textPrimary,
-              ),
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Configure the backend endpoint for your environment:',
-                  style: TextStyle(fontSize: 13, color: colors.textSecondary),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: controller,
-                  decoration: const InputDecoration(
-                    labelText: 'Base URL',
-                    hintText: 'http://127.0.0.1:8000',
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 6,
-                  children: [
-                    ActionChip(
-                      label: const Text(
-                        'USB / Local (127.0.0.1)',
-                        style: TextStyle(fontSize: 11),
-                      ),
-                      onPressed: () => setDialogState(
-                        () => controller.text = 'http://127.0.0.1:8000',
-                      ),
-                    ),
-                    ActionChip(
-                      label: const Text(
-                        'Emulator (10.0.2.2)',
-                        style: TextStyle(fontSize: 11),
-                      ),
-                      onPressed: () => setDialogState(
-                        () => controller.text = 'http://10.0.2.2:8000',
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    OutlinedButton.icon(
-                      icon: testingHealth
-                          ? const SizedBox(
-                              width: 12,
-                              height: 12,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.network_check_rounded, size: 16),
-                      label: const Text(
-                        'Test /health',
-                        style: TextStyle(fontSize: 12),
-                      ),
-                      onPressed: testingHealth
-                          ? null
-                          : () async {
-                              setDialogState(() {
-                                testingHealth = true;
-                                testResult = null;
-                              });
-                              try {
-                                await ApiConfig.setBaseUrl(controller.text);
-                                final health = await AuthService()
-                                    .checkHealth();
-                                setDialogState(() {
-                                  testingHealth = false;
-                                  isHealthy = health['status'] == 'ok';
-                                  testResult =
-                                      'Online: ${health['service']} (ok)';
-                                });
-                              } catch (e) {
-                                setDialogState(() {
-                                  testingHealth = false;
-                                  isHealthy = false;
-                                  testResult = 'Failed: $e';
-                                });
-                              }
-                            },
-                    ),
-                  ],
-                ),
-                if (testResult != null) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    testResult!,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: isHealthy ? colors.riskLow : colors.riskCritical,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: () async {
-                  await ApiConfig.setBaseUrl(controller.text);
-                  if (ctx.mounted) Navigator.pop(ctx);
-                },
-                child: const Text('Save'),
-              ),
-            ],
-          );
-        },
-      ),
-    );
   }
 
   Future<void> _handleLogin() async {
@@ -390,24 +248,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                     ],
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Server URL Config Button
-                  Center(
-                    child: TextButton.icon(
-                      icon: Icon(
-                        Icons.settings_ethernet_rounded,
-                        size: 16,
-                        color: colors.textMuted,
-                      ),
-                      label: Text(
-                        'API: ${ApiConfig.baseUrl}',
-                        style: TextStyle(fontSize: 11, color: colors.textMuted),
-                      ),
-                      onPressed: _showServerConfigDialog,
-                    ),
                   ),
                 ],
               ),
