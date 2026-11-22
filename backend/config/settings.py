@@ -119,8 +119,8 @@ if IS_PRODUCTION:
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = "DENY"
     SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
-    if os.environ.get("DJANGO_SECURE_PROXY_SSL_HEADER", "0").lower() in ("1", "true", "yes"):
-        SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    # Railway & reverse-proxies terminate SSL at edge and send X-Forwarded-Proto: https
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 else:
     SECURE_SSL_REDIRECT = False
     SESSION_COOKIE_SECURE = False
