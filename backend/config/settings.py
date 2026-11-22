@@ -8,7 +8,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
 # Database URL support for Render / Railway
-DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
+DATABASE_URL = os.environ.get("DATABASE_URL", "").strip().strip('"').strip("'")
 
 # Environment & Debug Configuration
 raw_env = os.environ.get("FRAUDLENS_ENV")
@@ -18,8 +18,11 @@ elif DATABASE_URL or os.environ.get("DB_ENGINE", "").lower() == "postgres":
     FRAUDLENS_ENV = "production"
 else:
     FRAUDLENS_ENV = "development" if os.environ.get("DJANGO_DEBUG", "").lower() in ("1", "true", "yes") else "production"
-DEBUG = os.environ.get("DJANGO_DEBUG", "1" if FRAUDLENS_ENV == "development" else "0").lower() in ("1", "true", "yes")
 IS_PRODUCTION = (FRAUDLENS_ENV == "production")
+if IS_PRODUCTION:
+    DEBUG = False
+else:
+    DEBUG = os.environ.get("DJANGO_DEBUG", "1" if FRAUDLENS_ENV == "development" else "0").lower() in ("1", "true", "yes")
 
 # Secret Key Validation
 DEFAULT_INSECURE_SECRET = "dev-only-insecure-key-change-me"
@@ -27,7 +30,13 @@ SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", DEFAULT_INSECURE_SECRET if (FRA
 
 # Allowed Hosts Validation
 raw_allowed_hosts = os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1" if (FRAUDLENS_ENV != "production") else "")
-ALLOWED_HOSTS = [h.strip() for h in raw_allowed_hosts.split(",") if h.strip()]
+ALLOWED_HOSTS = []
+for h in raw_allowed_hosts.split(","):
+    h = h.strip()
+    if h:
+        if h.startswith("*."):
+            h = h[1:]  # Django wildcard convention for subdomains is '.example.com'
+        ALLOWED_HOSTS.append(h)
 
 # CSRF Trusted Origins
 raw_csrf_origins = os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS", "")
@@ -37,7 +46,10 @@ if raw_csrf_origins:
 # CORS Configuration
 raw_cors_origins = os.environ.get("CORS_ALLOWED_ORIGINS", "")
 CORS_ALLOWED_ORIGINS = [o.strip() for o in raw_cors_origins.split(",") if o.strip()]
-CORS_ALLOW_ALL_ORIGINS = os.environ.get("CORS_ALLOW_ALL_ORIGINS", "0").lower() in ("1", "true", "yes")
+if IS_PRODUCTION:
+    CORS_ALLOW_ALL_ORIGINS = False
+else:
+    CORS_ALLOW_ALL_ORIGINS = os.environ.get("CORS_ALLOW_ALL_ORIGINS", "0").lower() in ("1", "true", "yes")
 
 
 def validate_security_settings(
