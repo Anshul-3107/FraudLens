@@ -1,14 +1,18 @@
 import logging
 import math
+import os
 import secrets
+import uuid
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction as db_transaction
 from django.db.models import Count, Exists, OuterRef, Sum
 from django.db.models.functions import TruncMonth
+from django.http import FileResponse
 from django.utils import timezone
 from django.utils.dateparse import parse_date
+from PIL import Image, UnidentifiedImageError
 from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
@@ -20,12 +24,12 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from .ingest import ingest_transaction
-from .models import Alert, Card, Investigation, PhoneVerification, Transaction, UserBehaviorProfile, UserProfile
+from .models import Alert, Card, Investigation, Transaction, UserBehaviorProfile, UserProfile
 from .permissions import IsOwnerOrStaff
-from .sms_service import generate_otp_code, hash_otp, send_live_sms
 from .serializers import (
     AlertSerializer, CardSerializer, InvestigationCreateSerializer,
-    InvestigationSerializer, RegisterSerializer, TransactionCreateSerializer,
+    InvestigationSerializer, LinkBankAccountSerializer, ProcessNotificationSerializer,
+    RegisterSerializer, RichieChatSerializer, TransactionCreateSerializer,
     TransactionSerializer,
 )
 
@@ -90,126 +94,21 @@ def param_date(params, key):
 
 
 # ---------------------------------------------------------------- auth
-class SendOtpView(APIView):
-    """Generates and sends a 6-digit verification code via live SMS."""
-    permission_classes = [permissions.AllowAny]
-    authentication_classes = []
-    throttle_classes = [ScopedRateThrottle]
-    throttle_scope = "auth_otp_send"
-
-    def post(self, request):
-        phone = str(request.data.get("phone", "")).strip()
-        if not phone or len(phone) < 10:
-            return Response({"error": "A valid mobile phone number is required."}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Invalidate any prior unverified OTPs for this phone number
-        PhoneVerification.objects.filter(phone_number=phone, is_verified=False).delete()
-
-        otp = generate_otp_code(6)
-        otp_hashed = hash_otp(phone, otp)
-        expires_at = timezone.now() + timezone.timedelta(minutes=5)
-
-        PhoneVerification.objects.create(
-            phone_number=phone,
-            otp_hash=otp_hashed,
-            expires_at=expires_at,
-        )
-
-        # Dispatch real SMS via configured gateway
-        delivery_res = send_live_sms(phone, otp)
-
-        logger.info(
-            "OTP dispatched for phone %s from IP %s (channel: %s)",
-            phone[:6] + "XXXX",
-            get_client_ip(request),
-            delivery_res.get("channel"),
-        )
-        response_data = {
-            "detail": "Verification code sent to registered mobile number.",
-            "phone": phone,
-            "expires_in_seconds": 300,
-            "delivery_channel": delivery_res.get("channel", "sms"),
-        }
-        if getattr(settings, "DEBUG", False):
-            response_data["dev_otp"] = otp
-            response_data["gateway_message"] = delivery_res.get("message")
-
-        return Response(response_data, status=status.HTTP_200_OK)
-
-
-class VerifyOtpView(APIView):
-    """Verifies the 6-digit OTP and logs in / registers the user."""
-    permission_classes = [permissions.AllowAny]
-    authentication_classes = []
-    throttle_classes = [ScopedRateThrottle]
-    throttle_scope = "auth_otp_verify"
-
-    def post(self, request):
-        phone = str(request.data.get("phone", "")).strip()
-        code = str(request.data.get("code", "")).strip()
-
-        if not phone or not code or len(code) != 6:
-            return Response({"error": "Phone number and 6-digit code are required."}, status=status.HTTP_400_BAD_REQUEST)
-
-        now = timezone.now()
-        record = PhoneVerification.objects.filter(
-            phone_number=phone,
-            is_verified=False,
-            expires_at__gte=now,
-        ).first()
-
-        if not record:
-            return Response({"error": "Expired or invalid verification code. Please request a new one."}, status=status.HTTP_400_BAD_REQUEST)
-
-        if record.attempts >= 5:
-            record.delete()
-            return Response({"error": "Too many failed attempts. Code invalidated."}, status=status.HTTP_429_TOO_MANY_REQUESTS)
-
-        expected_hash = hash_otp(phone, code)
-        if record.otp_hash != expected_hash:
-            record.attempts += 1
-            record.save(update_fields=["attempts"])
-            return Response({"error": "Incorrect verification code. Please check and retry."}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Mark verified
-        record.is_verified = True
-        record.save(update_fields=["is_verified"])
-
-        # Authenticate or create user account linked to this phone
-        sanitized_username = f"user_{phone.replace('+', '').replace(' ', '')}"[-30:]
-        user, created = User.objects.get_or_create(
-            username=sanitized_username,
-            defaults={"is_active": True},
-        )
-        token, _ = Token.objects.get_or_create(user=user)
-
-        logger.info(
-            "Phone verified successfully: %s -> User '%s' (created=%s)",
-            phone[:6] + "XXXX",
-            user.username,
-            created,
-        )
-
-        return Response({
-            "token": token.key,
-            "username": user.username,
-            "phone": phone,
-            "is_new_user": created,
-        }, status=status.HTTP_200_OK)
-
-
 class LinkBankAccountView(APIView):
     """Links a real bank account / card to the user's profile."""
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "account_link"
 
     def post(self, request):
-        account_number = str(request.data.get("account_number", "")).strip()
-        bank_name = str(request.data.get("bank_name", "Primary Bank")).strip()
-        home_lat = request.data.get("home_lat")
-        home_long = request.data.get("home_long")
+        serializer = LinkBankAccountSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
 
-        if not account_number or len(account_number) < 4:
-            return Response({"error": "A valid account or card number (at least 4 digits) is required."}, status=status.HTTP_400_BAD_REQUEST)
+        account_number = data["account_number"]
+        bank_name = data["bank_name"]
+        home_lat = data.get("home_lat")
+        home_long = data.get("home_long")
 
         last4 = account_number[-4:]
         card_ref = f"bank_{request.user.id}_{last4}_{secrets.token_hex(3)}"
@@ -219,8 +118,8 @@ class LinkBankAccountView(APIView):
             owner=request.user,
             card_ref=card_ref,
             label=label,
-            home_lat=float(home_lat) if home_lat is not None else None,
-            home_long=float(home_long) if home_long is not None else None,
+            home_lat=home_lat,
+            home_long=home_long,
         )
 
         logger.info("Bank account linked for user '%s': %s", request.user.username, label)
@@ -305,12 +204,26 @@ class LogoutView(APIView):
         return Response({"detail": "Successfully logged out. Token revoked."}, status=status.HTTP_200_OK)
 
 
+_AVATAR_FORMAT_MAP = {
+    "JPEG": ("jpg", "image/jpeg"),
+    "PNG": ("png", "image/png"),
+    "WEBP": ("webp", "image/webp"),
+    "GIF": ("gif", "image/gif"),
+}
+_EXT_CONTENT_TYPES = {ext: mime for ext, mime in _AVATAR_FORMAT_MAP.values()}
+
+
+def _build_avatar_url(request, profile):
+    version = int(profile.updated_at.timestamp()) if profile.updated_at else 0
+    return request.build_absolute_uri(f"/api/auth/avatar/?v={version}")
+
+
 class MeView(APIView):
     def get(self, request):
         user = request.user
         avatar_url = None
         if hasattr(user, "profile") and user.profile.avatar:
-            avatar_url = request.build_absolute_uri(user.profile.avatar.url)
+            avatar_url = _build_avatar_url(request, user.profile)
         return Response({
             "id": user.id,
             "username": user.username,
@@ -324,6 +237,30 @@ class MeView(APIView):
 class AvatarUploadView(APIView):
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "avatar_upload"
+
+    def get(self, request):
+        if not hasattr(request.user, "profile") or not request.user.profile.avatar:
+            return Response(
+                {"error": "No avatar found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        avatar = request.user.profile.avatar
+        try:
+            file_handle = avatar.open("rb")
+        except FileNotFoundError:
+            return Response(
+                {"error": "No avatar found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        ext = os.path.splitext(avatar.name)[1].lstrip(".").lower()
+        content_type = _EXT_CONTENT_TYPES.get(ext, "application/octet-stream")
+        resp = FileResponse(file_handle, content_type=content_type)
+        resp["Content-Disposition"] = "inline"
+        resp["X-Content-Type-Options"] = "nosniff"
+        resp["Cache-Control"] = "private, no-store"
+        return resp
 
     def post(self, request):
         avatar_file = request.FILES.get("avatar")
@@ -339,16 +276,41 @@ class AvatarUploadView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        try:
+            with Image.open(avatar_file) as img:
+                fmt = (img.format or "").upper()
+                width, height = img.size
+                img.verify()
+        except (UnidentifiedImageError, OSError, Image.DecompressionBombError, ValueError):
+            return Response(
+                {"error": "Invalid image file. Upload a PNG, JPEG, WEBP, or GIF image."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if fmt not in _AVATAR_FORMAT_MAP:
+            return Response(
+                {"error": "Unsupported image format. Allowed: PNG, JPEG, WEBP, GIF."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if width <= 0 or height <= 0 or width > 8192 or height > 8192:
+            return Response(
+                {"error": "Image dimensions must be between 1x1 and 8192x8192."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        ext, _ = _AVATAR_FORMAT_MAP[fmt]
+        avatar_file.seek(0)
+        avatar_file.name = f"{uuid.uuid4().hex}.{ext}"
+
         profile, _ = UserProfile.objects.get_or_create(user=request.user)
         if profile.avatar:
             profile.avatar.delete(save=False)
 
         profile.avatar = avatar_file
         profile.save()
-        avatar_url = request.build_absolute_uri(profile.avatar.url)
         return Response({
             "message": "Avatar uploaded successfully.",
-            "avatar_url": avatar_url,
+            "avatar_url": _build_avatar_url(request, profile),
         }, status=status.HTTP_200_OK)
 
     def delete(self, request):
@@ -523,23 +485,18 @@ class TransactionViewSet(
            - Fraud/Alert -> Routed to Review Section ("Needs Action" / Red Card).
            - Legitimate -> Saved into Transaction History (Green Card).
         """
-        raw_amt = request.data.get("amount")
-        if raw_amt is None:
-            raise ValidationError({"amount": "Amount is required."})
-        try:
-            amount = float(raw_amt)
-            if not math.isfinite(amount) or amount <= 0:
-                raise ValueError()
-        except ValueError:
-            raise ValidationError({"amount": "A positive numerical amount is required."})
+        serializer = ProcessNotificationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
 
-        merchant = str(request.data.get("merchant", "UPI Merchant")).strip() or "UPI Merchant"
-        category = str(request.data.get("category", "misc_pos")).strip().lower()
+        amount = data["amount"]
+        merchant = data["merchant"]
+        category = (data.get("category") or "misc_pos").strip().lower()
         if category not in [c[0] for c in Transaction.Category.choices]:
             category = "misc_pos"
 
-        last4 = str(request.data.get("last4", "")).strip()
-        bank_name = str(request.data.get("bank_name", "UPI Bank")).strip()
+        last4 = data["last4"]
+        bank_name = data["bank_name"]
 
         # Check for card matching this user
         user_cards = visible_cards(request.user)
@@ -564,7 +521,7 @@ class TransactionViewSet(
                 defaults={"card_ref": card_ref},
             )
 
-        occurred_at_str = request.data.get("occurred_at")
+        occurred_at_str = data.get("occurred_at")
         if occurred_at_str:
             occurred_at = parse_date(occurred_at_str)
             if not occurred_at:
@@ -578,13 +535,13 @@ class TransactionViewSet(
         if timezone.is_naive(occurred_at):
             occurred_at = timezone.make_aware(occurred_at, timezone.utc)
 
-        merch_lat = request.data.get("merch_lat")
-        merch_long = request.data.get("merch_long")
-        source_type = request.data.get("source", "notification").lower()
+        parsed_lat = data.get("merch_lat")
+        parsed_long = data.get("merch_long")
+        source_type = (data.get("source") or "notification").lower()
         txn_source = Transaction.Source.SMS if source_type == "sms" else Transaction.Source.NOTIFICATION
-        raw_txn_type = request.data.get("txn_type", "sent").lower()
+        raw_txn_type = (data.get("txn_type") or "sent").lower()
         txn_type = Transaction.TxnType.RECEIVED if raw_txn_type == "received" else Transaction.TxnType.SENT
-        currency = str(request.data.get("currency", "INR")).upper()
+        currency = data["currency"]
 
         # -------------------------------------------------------------
         # Deduplication Window (Idempotency Check)
@@ -643,8 +600,6 @@ class TransactionViewSet(
                 status=status.HTTP_200_OK,
             )
 
-        parsed_lat = float(merch_lat) if merch_lat is not None else None
-        parsed_long = float(merch_long) if merch_long is not None else None
         if matched_card.home_lat is None and parsed_lat is not None and parsed_long is not None:
             try:
                 matched_card.home_lat = parsed_lat
@@ -877,17 +832,13 @@ class RichieChatView(APIView):
     """Conversational endpoint for Richie, the FraudLens AI assistant."""
     permission_classes = [permissions.IsAuthenticated]
     throttle_classes = [ScopedRateThrottle]
-    throttle_scope = "user"
+    throttle_scope = "richie_chat"
 
     def post(self, request):
-        message = request.data.get("message", "").strip()
-        if not message:
-            return Response(
-                {"error": "Message cannot be empty."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        history = request.data.get("history", [])
+        serializer = RichieChatSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        message = serializer.validated_data["message"]
+        history = serializer.validated_data["history"]
         from .chat_service import ask_richie
 
         reply = ask_richie(

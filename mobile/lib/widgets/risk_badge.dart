@@ -44,61 +44,37 @@ class RiskScoreBadge extends StatelessWidget {
 
     if (compact) {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
           color: bg,
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: fg.withValues(alpha: 0.25), width: 1),
+          borderRadius: BorderRadius.circular(20),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 5,
-              height: 5,
-              decoration: BoxDecoration(color: fg, shape: BoxShape.circle),
-            ),
-            const SizedBox(width: 4),
-            Text(
-              percentStr,
-              style: TextStyle(
-                color: fg,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.2,
-              ),
-            ),
-          ],
+        child: Text(
+          percentStr,
+          style: TextStyle(
+            color: fg,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            fontFeatures: AppTheme.tabularFigures,
+          ),
         ),
       );
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: fg.withValues(alpha: 0.25), width: 1),
+        borderRadius: BorderRadius.circular(20),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 6,
-            height: 6,
-            decoration: BoxDecoration(color: fg, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            '$label ($percentStr)',
-            style: TextStyle(
-              color: fg,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.3,
-            ),
-          ),
-        ],
+      child: Text(
+        '$label ($percentStr)',
+        style: TextStyle(
+          color: fg,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          fontFeatures: AppTheme.tabularFigures,
+        ),
       ),
     );
   }
@@ -140,30 +116,14 @@ class AlertStatusBadge extends StatelessWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: fg.withValues(alpha: 0.2), width: 1),
+        borderRadius: BorderRadius.circular(20),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 5,
-            height: 5,
-            decoration: BoxDecoration(color: fg, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 5),
-          Text(
-            label,
-            style: TextStyle(
-              color: fg,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
+      child: Text(
+        label,
+        style: TextStyle(color: fg, fontSize: 11, fontWeight: FontWeight.w600),
       ),
     );
   }
@@ -200,7 +160,7 @@ class VerdictBadge extends StatelessWidget {
         bg = colors.riskMediumBg;
         fg = colors.riskMedium;
         label = 'Needs Info';
-        icon = Icons.help_outline_rounded;
+        icon = Icons.schedule_rounded;
         break;
       default:
         bg = colors.surfaceMuted;
@@ -210,11 +170,10 @@ class VerdictBadge extends StatelessWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: fg.withValues(alpha: 0.2), width: 1),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

@@ -5,21 +5,45 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
 import '../models/user.dart';
 import 'api_client.dart';
+import 'secure_storage_service.dart';
 
 class AuthService {
   static const String _kPrefAuthToken = 'fraudlens_auth_token';
   static const String _kPrefUserCache = 'fraudlens_user_cache';
 
   final ApiClient _client = ApiClient.instance;
+  final SecureStorageService _secureStorage = SecureStorageService.instance;
 
   Future<String?> getStoredToken() async {
+    final secureToken = await _secureStorage.read(_kPrefAuthToken);
+    if (secureToken != null && secureToken.isNotEmpty) {
+      return secureToken;
+    }
+
+    // One-time migration from legacy plaintext SharedPreferences
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_kPrefAuthToken);
+    final legacyToken = prefs.getString(_kPrefAuthToken);
+    if (legacyToken != null && legacyToken.isNotEmpty) {
+      await _secureStorage.write(_kPrefAuthToken, legacyToken);
+      await prefs.remove(_kPrefAuthToken);
+      return legacyToken;
+    }
+    return null;
   }
 
   Future<UserMe?> getStoredUser() async {
-    final prefs = await SharedPreferences.getInstance();
-    final jsonStr = prefs.getString(_kPrefUserCache);
+    var jsonStr = await _secureStorage.read(_kPrefUserCache);
+    if (jsonStr == null || jsonStr.isEmpty) {
+      // One-time migration from legacy plaintext SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      final legacyUser = prefs.getString(_kPrefUserCache);
+      if (legacyUser != null && legacyUser.isNotEmpty) {
+        await _secureStorage.write(_kPrefUserCache, legacyUser);
+        await prefs.remove(_kPrefUserCache);
+        jsonStr = legacyUser;
+      }
+    }
+
     if (jsonStr != null && jsonStr.isNotEmpty) {
       try {
         final map = jsonDecode(jsonStr) as Map<String, dynamic>;
@@ -32,17 +56,21 @@ class AuthService {
   }
 
   Future<void> saveToken(String token) async {
+    await _secureStorage.write(_kPrefAuthToken, token);
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_kPrefAuthToken, token);
+    await prefs.remove(_kPrefAuthToken);
     _client.setToken(token);
   }
 
   Future<void> saveUser(UserMe user) async {
+    await _secureStorage.write(_kPrefUserCache, jsonEncode(user.toJson()));
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_kPrefUserCache, jsonEncode(user.toJson()));
+    await prefs.remove(_kPrefUserCache);
   }
 
   Future<void> clearSession() async {
+    await _secureStorage.delete(_kPrefAuthToken);
+    await _secureStorage.delete(_kPrefUserCache);
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_kPrefAuthToken);
     await prefs.remove(_kPrefUserCache);
@@ -78,23 +106,6 @@ class AuthService {
       body['email'] = email.trim();
     }
     final response = await _client.post(ApiConfig.registerUrl, body: body);
-    final authResp = AuthResponse.fromJson(response as Map<String, dynamic>);
-    await saveToken(authResp.token);
-    return authResp;
-  }
-
-  Future<Map<String, dynamic>> sendOtp(String phone) async {
-    final body = {'phone': phone.trim()};
-    final response = await _client.post(ApiConfig.sendOtpUrl, body: body);
-    return response as Map<String, dynamic>;
-  }
-
-  Future<AuthResponse> verifyOtp({
-    required String phone,
-    required String code,
-  }) async {
-    final body = {'phone': phone.trim(), 'code': code.trim()};
-    final response = await _client.post(ApiConfig.verifyOtpUrl, body: body);
     final authResp = AuthResponse.fromJson(response as Map<String, dynamic>);
     await saveToken(authResp.token);
     return authResp;

@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+
 import '../config/api_config.dart';
 import 'api_client.dart';
 
@@ -16,10 +17,10 @@ class ChatMessage {
   bool get isUser => sender == 'user';
 
   Map<String, dynamic> toJson() => {
-        'text': text,
-        'sender': sender,
-        'timestamp': timestamp.toIso8601String(),
-      };
+    'text': text,
+    'sender': sender,
+    'timestamp': timestamp.toIso8601String(),
+  };
 }
 
 class ChatService {
@@ -34,19 +35,13 @@ class ChatService {
   }) async {
     final url = '${ApiConfig.baseUrl}/api/chat/richie/';
     final historyPayload = history
-        .map((m) => {
-              'sender': m.sender,
-              'text': m.text,
-            })
+        .map((m) => {'sender': m.sender, 'text': m.text})
         .toList();
 
     try {
       final response = await _client.post(
         url,
-        body: {
-          'message': message,
-          'history': historyPayload,
-        },
+        body: {'message': message, 'history': historyPayload},
       );
 
       if (response is Map<String, dynamic> && response.containsKey('reply')) {

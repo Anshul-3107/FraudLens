@@ -1,4 +1,5 @@
 from decimal import Decimal
+import math
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
@@ -147,3 +148,97 @@ class InvestigationSerializer(serializers.ModelSerializer):
             "id", "alert", "analyst_name", "verdict", "notes", "created_at",
             "merchant", "amount", "occurred_at",
         ]
+
+
+def _validate_finite_coord(value, name):
+    if value is not None and not math.isfinite(value):
+        raise serializers.ValidationError(f"{name} must be a finite number.")
+    return value
+
+
+class LinkBankAccountSerializer(serializers.Serializer):
+    bank_name = serializers.CharField(required=False, allow_blank=True, default="Primary Bank", max_length=80)
+    account_number = serializers.CharField(min_length=4, max_length=32)
+    home_lat = serializers.FloatField(required=False, allow_null=True, min_value=-90, max_value=90)
+    home_long = serializers.FloatField(required=False, allow_null=True, min_value=-180, max_value=180)
+
+    def validate_bank_name(self, value):
+        cleaned = (value or "").strip()
+        return cleaned or "Primary Bank"
+
+    def validate_account_number(self, value):
+        cleaned = (value or "").strip()
+        if len(cleaned) < 4:
+            raise serializers.ValidationError("A valid account or card number (at least 4 digits) is required.")
+        return cleaned
+
+    def validate_home_lat(self, value):
+        return _validate_finite_coord(value, "home_lat")
+
+    def validate_home_long(self, value):
+        return _validate_finite_coord(value, "home_long")
+
+
+class ProcessNotificationSerializer(serializers.Serializer):
+    amount = serializers.FloatField(min_value=0.01, max_value=10000000.0)
+    merchant = serializers.CharField(required=False, allow_blank=True, default="UPI Merchant", max_length=255)
+    category = serializers.CharField(required=False, allow_blank=True, default="misc_pos", max_length=32)
+    last4 = serializers.CharField(required=False, allow_blank=True, default="", max_length=16)
+    bank_name = serializers.CharField(required=False, allow_blank=True, default="UPI Bank", max_length=60)
+    package_name = serializers.CharField(required=False, allow_blank=True, default="", max_length=120)
+    occurred_at = serializers.CharField(required=False, allow_null=True, allow_blank=True, max_length=64)
+    merch_lat = serializers.FloatField(required=False, allow_null=True, min_value=-90, max_value=90)
+    merch_long = serializers.FloatField(required=False, allow_null=True, min_value=-180, max_value=180)
+    source = serializers.CharField(required=False, allow_blank=True, default="notification", max_length=20)
+    txn_type = serializers.CharField(required=False, allow_blank=True, default="sent", max_length=20)
+    currency = serializers.CharField(required=False, allow_blank=True, default="INR", max_length=10)
+
+    def validate_amount(self, value):
+        if not math.isfinite(value) or value <= 0:
+            raise serializers.ValidationError("A positive numerical amount is required.")
+        return value
+
+    def validate_merchant(self, value):
+        cleaned = (value or "").strip()
+        return cleaned or "UPI Merchant"
+
+    def validate_bank_name(self, value):
+        cleaned = (value or "").strip()
+        return cleaned or "UPI Bank"
+
+    def validate_last4(self, value):
+        digits = "".join(ch for ch in (value or "").strip() if ch.isdigit())
+        if digits:
+            return digits[-4:]
+        return (value or "").strip()[:4]
+
+    def validate_merch_lat(self, value):
+        return _validate_finite_coord(value, "merch_lat")
+
+    def validate_merch_long(self, value):
+        return _validate_finite_coord(value, "merch_long")
+
+    def validate_currency(self, value):
+        cleaned = (value or "INR").strip().upper()
+        return cleaned[:10] or "INR"
+
+
+class RichieChatSerializer(serializers.Serializer):
+    message = serializers.CharField(max_length=1000, trim_whitespace=True)
+    history = serializers.ListField(required=False, default=list, max_length=12)
+
+    def validate_message(self, value):
+        if not value or not value.strip():
+            raise serializers.ValidationError("Message cannot be empty.")
+        return value.strip()
+
+    def validate_history(self, value):
+        sanitized = []
+        for turn in value[-6:]:
+            if not isinstance(turn, dict):
+                continue
+            sender = "user" if turn.get("sender") == "user" else "richie"
+            text = str(turn.get("text") or "").strip()[:1000]
+            if text:
+                sanitized.append({"sender": sender, "text": text})
+        return sanitized

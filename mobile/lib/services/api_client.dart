@@ -32,6 +32,10 @@ class ApiClient {
   String? get token => _token;
   bool get isAuthenticated => _token != null && _token!.isNotEmpty;
 
+  Map<String, String> get authHeaders => (_token != null && _token!.isNotEmpty)
+      ? {'Authorization': 'Token $_token'}
+      : const {};
+
   Map<String, String> _buildHeaders({bool isJson = true}) {
     final headers = <String, String>{'Accept': 'application/json'};
     if (isJson) {
@@ -176,12 +180,11 @@ class ApiClient {
         request.fields.addAll(fields);
       }
 
-      request.files.add(
-        await http.MultipartFile.fromPath(fileField, filePath),
-      );
+      request.files.add(await http.MultipartFile.fromPath(fileField, filePath));
 
-      final streamedResponse =
-          await request.send().timeout(const Duration(seconds: 30));
+      final streamedResponse = await request.send().timeout(
+        const Duration(seconds: 30),
+      );
       final response = await http.Response.fromStream(streamedResponse);
       return _handleResponse(response);
     } catch (e) {

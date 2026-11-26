@@ -11,19 +11,19 @@ class ShapFactorCard extends StatelessWidget {
   IconData _getFactorIcon(String factor) {
     switch (factor.toLowerCase()) {
       case 'amount':
-        return Icons.attach_money_rounded;
+        return Icons.payments_outlined;
       case 'time':
         return Icons.schedule_rounded;
       case 'category':
-        return Icons.storefront_rounded;
+        return Icons.storefront_outlined;
       case 'velocity':
-        return Icons.speed_rounded;
+        return Icons.bolt_rounded;
       case 'novelty':
-        return Icons.fiber_new_rounded;
+        return Icons.fiber_new_outlined;
       case 'rarity':
         return Icons.fingerprint_rounded;
       case 'location':
-        return Icons.location_on_rounded;
+        return Icons.location_on_outlined;
       default:
         return Icons.analytics_outlined;
     }
@@ -54,32 +54,20 @@ class ShapFactorCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
     final normalizedImpact = (reason.impact / 1.5).clamp(0.05, 1.0);
+    final isStrong = reason.impact >= 0.5;
+    final barColor = isStrong ? colors.riskCritical : colors.riskMedium;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: colors.border, width: 1),
-        boxShadow: colors.cardShadow,
-      ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(5),
-                decoration: BoxDecoration(
-                  color: colors.riskCriticalBg,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Icon(
-                  _getFactorIcon(reason.factor),
-                  size: 15,
-                  color: colors.riskCritical,
-                ),
+              Icon(
+                _getFactorIcon(reason.factor),
+                size: 15,
+                color: isStrong ? colors.riskCritical : colors.textSecondary,
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -87,47 +75,50 @@ class ShapFactorCard extends StatelessWidget {
                   _formatFactorTitle(reason.factor),
                   style: TextStyle(
                     color: colors.textPrimary,
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: colors.surfaceMuted,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  '+${reason.impact.toStringAsFixed(2)} Risk Impact',
-                  style: TextStyle(
-                    color: colors.textSecondary,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                  ),
+              const SizedBox(width: 8),
+              Text(
+                '+${reason.impact.toStringAsFixed(2)} Risk Impact',
+                style: TextStyle(
+                  color: colors.textMuted,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  fontFeatures: AppTheme.tabularFigures,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            reason.text,
-            style: TextStyle(
-              color: colors.textSecondary,
-              fontSize: 12,
-              height: 1.35,
-            ),
-          ),
-          const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(2),
-            child: LinearProgressIndicator(
-              value: normalizedImpact,
-              backgroundColor: colors.surfaceMuted,
-              valueColor: AlwaysStoppedAnimation<Color>(
-                reason.impact >= 0.5 ? colors.riskCritical : colors.riskHigh,
-              ),
-              minHeight: 3,
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.only(left: 23),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  reason.text,
+                  style: TextStyle(
+                    color: colors.textSecondary,
+                    fontSize: 12.5,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(3),
+                  child: LinearProgressIndicator(
+                    value: normalizedImpact,
+                    backgroundColor: colors.surfaceMuted,
+                    valueColor: AlwaysStoppedAnimation<Color>(barColor),
+                    minHeight: 4,
+                  ),
+                ),
+              ],
             ),
           ),
         ],

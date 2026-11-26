@@ -90,7 +90,8 @@ class TransactionService {
       'currency': currency,
       if (merchLat != null) 'merch_lat': merchLat,
       if (merchLong != null) 'merch_long': merchLong,
-      if (locationName != null && locationName.isNotEmpty) 'location': locationName,
+      if (locationName != null && locationName.isNotEmpty)
+        'location': locationName,
     };
     final response = await _client.post(
       ApiConfig.processNotificationUrl,

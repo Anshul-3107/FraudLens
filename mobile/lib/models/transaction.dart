@@ -35,12 +35,14 @@ class TransactionModel {
 
   bool get isReceived => txnType.toLowerCase() == 'received';
   bool get isSent => !isReceived;
-  bool get isSourceUsd => (currency.toUpperCase() == 'USD' && source == 'simulated');
+  bool get isSourceUsd =>
+      (currency.toUpperCase() == 'USD' && source == 'simulated');
 
   factory TransactionModel.fromJson(Map<String, dynamic> json) {
     final src = json['source'] as String? ?? 'simulated';
     final rawType = json['txn_type'] as String? ?? 'sent';
-    final rawCurr = json['currency'] as String? ?? (src == 'simulated' ? 'USD' : 'INR');
+    final rawCurr =
+        json['currency'] as String? ?? (src == 'simulated' ? 'USD' : 'INR');
 
     return TransactionModel(
       id: json['id'] as int? ?? 0,
@@ -57,8 +59,12 @@ class TransactionModel {
       hasAlert: json['has_alert'] as bool? ?? false,
       txnType: rawType,
       currency: rawCurr,
-      merchLat: json['merch_lat'] != null ? _parseDouble(json['merch_lat']) : null,
-      merchLong: json['merch_long'] != null ? _parseDouble(json['merch_long']) : null,
+      merchLat: json['merch_lat'] != null
+          ? _parseDouble(json['merch_lat'])
+          : null,
+      merchLong: json['merch_long'] != null
+          ? _parseDouble(json['merch_long'])
+          : null,
     );
   }
 

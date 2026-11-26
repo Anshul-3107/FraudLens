@@ -47,11 +47,13 @@ class AlertTransaction {
 
   bool get isReceived => txnType.toLowerCase() == 'received';
   bool get isSent => !isReceived;
-  bool get isSourceUsd => (currency.toUpperCase() == 'USD' && source == 'simulated');
+  bool get isSourceUsd =>
+      (currency.toUpperCase() == 'USD' && source == 'simulated');
 
   factory AlertTransaction.fromJson(Map<String, dynamic> json) {
     final src = json['source'] as String? ?? 'simulated';
-    final rawCurr = json['currency'] as String? ?? (src == 'simulated' ? 'USD' : 'INR');
+    final rawCurr =
+        json['currency'] as String? ?? (src == 'simulated' ? 'USD' : 'INR');
     final rawType = json['txn_type'] as String? ?? 'sent';
 
     return AlertTransaction(

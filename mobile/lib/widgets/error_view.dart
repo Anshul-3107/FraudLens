@@ -13,25 +13,22 @@ class ErrorView extends StatelessWidget {
     final colors = AppColors.of(context);
 
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: const EdgeInsets.all(12),
+              width: 52,
+              height: 52,
               decoration: BoxDecoration(
                 color: colors.riskCriticalBg,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: colors.riskCritical.withValues(alpha: 0.25),
-                  width: 1,
-                ),
+                shape: BoxShape.circle,
               ),
               child: Icon(
-                Icons.error_outline_rounded,
+                Icons.cloud_off_rounded,
                 color: colors.riskCritical,
-                size: 26,
+                size: 24,
               ),
             ),
             const SizedBox(height: 14),
@@ -39,41 +36,39 @@ class ErrorView extends StatelessWidget {
               'Unable to Load Data',
               style: TextStyle(
                 color: colors.textPrimary,
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
+                fontSize: 15.5,
+                fontWeight: FontWeight.w600,
                 letterSpacing: -0.2,
               ),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 6),
             ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 320),
+              constraints: const BoxConstraints(maxWidth: 300),
               child: Text(
                 message,
                 style: TextStyle(
                   color: colors.textSecondary,
-                  fontSize: 12,
-                  height: 1.4,
+                  fontSize: 13,
+                  height: 1.45,
                 ),
                 textAlign: TextAlign.center,
               ),
             ),
             if (onRetry != null) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: 18),
               ElevatedButton.icon(
                 onPressed: onRetry,
-                icon: const Icon(Icons.refresh_rounded, size: 16),
+                icon: const Icon(Icons.refresh_rounded, size: 17),
                 label: const Text('Try Again'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: colors.textPrimary,
-                  foregroundColor: colors.isDark
-                      ? const Color(0xFF0F172A)
-                      : Colors.white,
+                  minimumSize: const Size(0, 42),
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
+                    horizontal: 18,
                     vertical: 10,
                   ),
                   textStyle: const TextStyle(
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
                 ),

@@ -1,5 +1,7 @@
 import 'dart:async';
+
 import 'package:flutter/services.dart';
+
 import 'upi_parser.dart';
 
 class NotificationListenerService {
@@ -44,8 +46,9 @@ class NotificationListenerService {
   /// Check if the user has enabled Notification Access in Android Settings
   Future<bool> isPermissionGranted() async {
     try {
-      final granted =
-          await _channel.invokeMethod<bool>('isNotificationListenerEnabled');
+      final granted = await _channel.invokeMethod<bool>(
+        'isNotificationListenerEnabled',
+      );
       return granted ?? false;
     } catch (_) {
       return false;
@@ -62,8 +65,9 @@ class NotificationListenerService {
   /// Check if SMS Receive permission is granted
   Future<bool> isSmsPermissionGranted() async {
     try {
-      final granted =
-          await _channel.invokeMethod<bool>('isSmsPermissionGranted');
+      final granted = await _channel.invokeMethod<bool>(
+        'isSmsPermissionGranted',
+      );
       return granted ?? false;
     } catch (_) {
       return false;
@@ -80,8 +84,9 @@ class NotificationListenerService {
   /// Check if Location permission is granted
   Future<bool> isLocationPermissionGranted() async {
     try {
-      final granted =
-          await _channel.invokeMethod<bool>('isLocationPermissionGranted');
+      final granted = await _channel.invokeMethod<bool>(
+        'isLocationPermissionGranted',
+      );
       return granted ?? false;
     } catch (_) {
       return false;

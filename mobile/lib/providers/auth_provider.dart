@@ -26,12 +26,9 @@ class AuthProvider extends ChangeNotifier {
   UserMe? get user => _user;
   String? get token => _token;
   String? get errorMessage => _errorMessage;
-  String? get devOtp => _devOtp;
   bool get isAuthenticated =>
       _status == AuthStatus.authenticated && _token != null;
   bool get isLoading => _isLoading;
-
-  String? _devOtp;
 
   void _handleUnauthorized() {
     _status = AuthStatus.unauthenticated;
@@ -141,52 +138,6 @@ class AuthProvider extends ChangeNotifier {
     } catch (e) {
       _status = AuthStatus.error;
       _errorMessage = e.toString();
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    }
-  }
-
-  Future<bool> sendOtp(String phone) async {
-    _isLoading = true;
-    _errorMessage = null;
-    _devOtp = null;
-    notifyListeners();
-
-    try {
-      final res = await _authService.sendOtp(phone);
-      if (res['dev_otp'] != null) {
-        _devOtp = res['dev_otp'].toString();
-      }
-      _isLoading = false;
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _errorMessage = e.toString().replaceFirst('Exception: ', '');
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    }
-  }
-
-  Future<bool> verifyOtp(String phone, String code) async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-
-    try {
-      final authResp = await _authService.verifyOtp(phone: phone, code: code);
-      _token = authResp.token;
-      ApiClient.instance.setToken(_token);
-
-      final me = await _authService.getMe();
-      _user = me;
-      _status = AuthStatus.authenticated;
-      _isLoading = false;
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _errorMessage = e.toString().replaceFirst('Exception: ', '');
       _isLoading = false;
       notifyListeners();
       return false;

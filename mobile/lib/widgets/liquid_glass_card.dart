@@ -1,4 +1,5 @@
 import 'dart:ui';
+
 import 'package:flutter/material.dart';
 
 import '../config/app_theme.dart';
@@ -36,7 +37,8 @@ class LiquidGlassCard extends StatelessWidget {
     final topAlpha = opacity ?? (colors.isDark ? 0.78 : 0.85);
     final bottomAlpha = (topAlpha - 0.12).clamp(0.40, 0.95);
 
-    final border = customBorder ??
+    final border =
+        customBorder ??
         Border.all(
           color: colors.isDark
               ? Colors.white.withValues(alpha: 0.12)

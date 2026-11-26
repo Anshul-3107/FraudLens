@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 
 import '../../config/app_theme.dart';
 import '../../providers/auth_provider.dart';
-import '../../widgets/liquid_glass_card.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -38,7 +37,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
 
     if (success && mounted) {
-      // Pop back to root; auth state change will automatically show dashboard
       Navigator.pop(context);
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -64,133 +62,124 @@ class _RegisterScreenState extends State<RegisterScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 400),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  LiquidGlassCard(
-                    padding: const EdgeInsets.all(24),
-                    borderRadius: 16,
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Text(
-                            'Create Your Account',
-                            style: TextStyle(
-                              color: colors.textPrimary,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            'Choose a unique username and password to start live fraud monitoring.',
-                            style: TextStyle(
-                              color: colors.textMuted,
-                              fontSize: 13,
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-
-                          // Username
-                          TextFormField(
-                            controller: _usernameController,
-                            decoration: const InputDecoration(
-                              labelText: 'Username',
-                              prefixIcon: Icon(
-                                Icons.person_outline_rounded,
-                                size: 20,
-                              ),
-                            ),
-                            validator: (val) {
-                              if (val == null || val.trim().isEmpty) {
-                                return 'Username is required';
-                              }
-                              if (val.trim().length < 3) {
-                                return 'Username must be at least 3 characters';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Password
-                          TextFormField(
-                            controller: _passwordController,
-                            obscureText: _obscurePassword,
-                            decoration: InputDecoration(
-                              labelText: 'Password',
-                              prefixIcon: const Icon(
-                                Icons.lock_outline_rounded,
-                                size: 20,
-                              ),
-                              suffixIcon: IconButton(
-                                icon: Icon(
-                                  _obscurePassword
-                                      ? Icons.visibility_off
-                                      : Icons.visibility,
-                                  size: 20,
-                                ),
-                                onPressed: () => setState(
-                                  () => _obscurePassword = !_obscurePassword,
-                                ),
-                              ),
-                            ),
-                            validator: (val) {
-                              if (val == null || val.isEmpty) {
-                                return 'Password is required';
-                              }
-                              if (val.length < 8) {
-                                return 'Password must be at least 8 characters';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Confirm Password
-                          TextFormField(
-                            controller: _confirmPasswordController,
-                            obscureText: _obscurePassword,
-                            decoration: const InputDecoration(
-                              labelText: 'Confirm Password',
-                              prefixIcon: Icon(
-                                Icons.lock_reset_rounded,
-                                size: 20,
-                              ),
-                            ),
-                            validator: (val) {
-                              if (val != _passwordController.text) {
-                                return 'Passwords do not match';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 24),
-
-                          ElevatedButton(
-                            onPressed: authProvider.isLoading
-                                ? null
-                                : _handleRegister,
-                            child: authProvider.isLoading
-                                ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        Colors.white,
-                                      ),
-                                    ),
-                                  )
-                                : const Text('Create Account'),
-                          ),
-                        ],
+              child: Container(
+                padding: const EdgeInsets.all(22),
+                decoration: BoxDecoration(
+                  color: colors.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: colors.border),
+                ),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        'Get started',
+                        style: TextStyle(
+                          color: colors.textPrimary,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Create a username and password to start monitoring your accounts.',
+                        style: TextStyle(
+                          color: colors.textMuted,
+                          fontSize: 13,
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      TextFormField(
+                        controller: _usernameController,
+                        decoration: const InputDecoration(
+                          labelText: 'Username',
+                          prefixIcon: Icon(
+                            Icons.person_outline_rounded,
+                            size: 20,
+                          ),
+                        ),
+                        validator: (val) {
+                          if (val == null || val.trim().isEmpty) {
+                            return 'Username is required';
+                          }
+                          if (val.trim().length < 3) {
+                            return 'Username must be at least 3 characters';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 14),
+
+                      TextFormField(
+                        controller: _passwordController,
+                        obscureText: _obscurePassword,
+                        decoration: InputDecoration(
+                          labelText: 'Password',
+                          prefixIcon: const Icon(
+                            Icons.lock_outline_rounded,
+                            size: 20,
+                          ),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                              size: 20,
+                            ),
+                            onPressed: () => setState(
+                              () => _obscurePassword = !_obscurePassword,
+                            ),
+                          ),
+                        ),
+                        validator: (val) {
+                          if (val == null || val.isEmpty) {
+                            return 'Password is required';
+                          }
+                          if (val.length < 8) {
+                            return 'Password must be at least 8 characters';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 14),
+
+                      TextFormField(
+                        controller: _confirmPasswordController,
+                        obscureText: _obscurePassword,
+                        decoration: const InputDecoration(
+                          labelText: 'Confirm Password',
+                          prefixIcon: Icon(Icons.lock_reset_rounded, size: 20),
+                        ),
+                        validator: (val) {
+                          if (val != _passwordController.text) {
+                            return 'Passwords do not match';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 22),
+
+                      ElevatedButton(
+                        onPressed: authProvider.isLoading
+                            ? null
+                            : _handleRegister,
+                        child: authProvider.isLoading
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text('Create Account'),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),

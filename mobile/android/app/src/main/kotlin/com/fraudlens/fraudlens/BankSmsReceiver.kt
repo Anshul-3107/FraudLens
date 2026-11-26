@@ -34,8 +34,6 @@ class BankSmsReceiver : BroadcastReceiver() {
         val body = messages.joinToString("") { it.displayMessageBody ?: "" }
         val timestamp = messages[0].timestampMillis
 
-        Log.d(TAG, "SMS received from '$sender': $body")
-
         val upperSender = sender.uppercase()
         val isBankSender = BANK_SENDER_PATTERNS.any { upperSender.contains(it) }
 
@@ -48,7 +46,6 @@ class BankSmsReceiver : BroadcastReceiver() {
                 (upperBody.contains("RS") || upperBody.contains("INR") || upperBody.contains("₹"))
 
         if (isBankSender || hasDebitKeywords) {
-            Log.d(TAG, "Identified Bank Debit SMS from $sender. Broadcasting to Flutter engine...")
             val broadcastIntent = Intent(ACTION_BANK_SMS).apply {
                 putExtra(EXTRA_SENDER, sender)
                 putExtra(EXTRA_BODY, body)

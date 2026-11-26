@@ -24,14 +24,18 @@ class AlertDetailScreen extends StatefulWidget {
 
 class _AlertDetailScreenState extends State<AlertDetailScreen> {
   late AlertModel _currentAlert;
-  String _selectedVerdict = 'confirmed_fraud';
+  String _selectedVerdict = 'false_positive';
   final TextEditingController _notesController = TextEditingController();
   bool _submitting = false;
+  bool _showTechnicalFactors = false;
 
   @override
   void initState() {
     super.initState();
     _currentAlert = widget.alert;
+    if (_currentAlert.latestVerdict != null) {
+      _selectedVerdict = _currentAlert.latestVerdict!;
+    }
   }
 
   @override
@@ -54,7 +58,6 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
         req,
       );
 
-      // Refresh dashboard summary and investigations list
       if (mounted) {
         context.read<DashboardProvider>().loadSummary();
         context.read<InvestigationProvider>().loadInvestigations();
@@ -76,9 +79,7 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
         final colors = AppColors.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'Investigation verdict "${invResult.verdictDisplay}" recorded successfully.',
-            ),
+            content: Text('Decision saved: ${invResult.verdictDisplay}.'),
             backgroundColor: colors.riskLow,
           ),
         );
@@ -89,7 +90,7 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
         setState(() => _submitting = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to record verdict: $e'),
+            content: Text('Could not save decision: $e'),
             backgroundColor: colors.riskCritical,
           ),
         );
@@ -101,37 +102,95 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
     BuildContext context,
     String label,
     String value, {
-    Widget? trailing,
     Color? valueColor,
     FontWeight? fontWeight,
   }) {
     final colors = AppColors.of(context);
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
+      padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
             label,
             style: TextStyle(color: colors.textSecondary, fontSize: 13),
           ),
-          const SizedBox(width: 8),
-          if (trailing != null)
-            trailing
-          else
-            Flexible(
-              child: Text(
-                value,
-                style: TextStyle(
-                  color: valueColor ?? colors.textPrimary,
-                  fontSize: 13,
-                  fontWeight: fontWeight ?? FontWeight.w600,
-                ),
-                textAlign: TextAlign.end,
-                overflow: TextOverflow.ellipsis,
+          const SizedBox(width: 14),
+          Flexible(
+            child: Text(
+              value,
+              style: TextStyle(
+                color: valueColor ?? colors.textPrimary,
+                fontSize: 13.5,
+                fontWeight: fontWeight ?? FontWeight.w500,
               ),
+              textAlign: TextAlign.end,
             ),
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildVerdictOption({
+    required AppColors colors,
+    required String value,
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color accentColor,
+  }) {
+    final isSelected = _selectedVerdict == value;
+    return Material(
+      color: isSelected
+          ? accentColor.withValues(alpha: colors.isDark ? 0.14 : 0.08)
+          : colors.background,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: () => setState(() => _selectedVerdict = value),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isSelected ? accentColor : colors.border,
+              width: isSelected ? 1.5 : 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                size: 20,
+                color: isSelected ? accentColor : colors.textSecondary,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: colors.textPrimary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: TextStyle(color: colors.textMuted, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              if (isSelected)
+                Icon(Icons.check_circle_rounded, size: 18, color: accentColor),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -142,366 +201,409 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
     final alert = _currentAlert;
     final txn = alert.transaction;
     final currencyProvider = context.watch<CurrencyProvider>();
-    final dateFormat = DateFormat('MMMM d, yyyy • h:mm:ss a');
+    final dateFormat = DateFormat('MMMM d, yyyy · h:mm a');
+    final displayAmount = txn != null
+        ? currencyProvider.format(txn.amount, isSourceUsd: txn.isSourceUsd)
+        : '—';
 
     return Scaffold(
       backgroundColor: colors.background,
       appBar: AppBar(
         title: Text('Alert #${alert.id}'),
         actions: [
-          IconButton(
-            icon: Icon(Icons.auto_awesome_rounded, color: colors.tealPrimary, size: 20),
-            tooltip: 'Ask Richie',
-            onPressed: () {
-              final merchant = txn?.merchant ?? 'this transaction';
-              final amt = txn != null ? '₹${txn.amount.toStringAsFixed(2)}' : '';
-              RichieChatSheet.show(
-                context,
-                initialPrompt:
-                    'Why was Alert #${alert.id} ($amt at $merchant) flagged with a fraud risk score of ${(alert.score * 100).toStringAsFixed(0)}%?',
-              );
-            },
-          ),
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: Center(child: AlertStatusBadge(status: alert.status)),
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Risk Score Summary Card
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: colors.surface,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: colors.riskCritical.withValues(alpha: 0.3),
-                  width: 1.5,
-                ),
-                boxShadow: colors.cardShadow,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Wrap(
-                    alignment: WrapAlignment.spaceBetween,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    spacing: 8,
-                    runSpacing: 6,
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 640),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Risk Assessment Card
+                Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: colors.surface,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: alert.status == 'open'
+                          ? colors.riskCritical.withValues(alpha: 0.35)
+                          : colors.border,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'AI FRAUD RISK EVALUATION',
-                        style: TextStyle(
-                          color: colors.textSecondary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      RiskScoreBadge(
-                        score: alert.score,
-                        threshold: alert.threshold,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Text(
-                        '${(alert.score * 100).toStringAsFixed(1)}%',
-                        style: TextStyle(
-                          color: colors.textPrimary,
-                          fontSize: 32,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Probability exceeding ${(alert.threshold * 100).toStringAsFixed(0)}% decision threshold',
-                          style: TextStyle(
-                            color: colors.textSecondary,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: alert.score.clamp(0.0, 1.0),
-                      backgroundColor: colors.surfaceSubtle,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        alert.score >= 0.8
-                            ? colors.riskCritical
-                            : colors.riskMedium,
-                      ),
-                      minHeight: 8,
-                    ),
-                  ),
-                  if (alert.latestVerdict != null) ...[
-                    const SizedBox(height: 14),
-                    Wrap(
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      spacing: 6,
-                      runSpacing: 4,
-                      children: [
-                        Text(
-                          'Latest Analyst Verdict: ',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: colors.textSecondary,
-                          ),
-                        ),
-                        VerdictBadge(verdict: alert.latestVerdict!),
-                      ],
-                    ),
-                  ],
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 14),
-
-            // Associated Transaction Card
-            if (txn != null) ...[
-              Container(
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: colors.surface,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: colors.border, width: 1),
-                  boxShadow: colors.cardShadow,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Flagged Transaction Details',
-                      style: TextStyle(
-                        color: colors.textPrimary,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Divider(color: colors.border),
-                    const SizedBox(height: 4),
-                    _buildDetailRow(context, 'Merchant', txn.merchant),
-                    _buildDetailRow(
-                      context,
-                      'Amount',
-                      currencyProvider.format(txn.amount, isSourceUsd: txn.isSourceUsd),
-                      valueColor: colors.riskCritical,
-                      fontWeight: FontWeight.w700,
-                    ),
-                    if (txn.isSourceUsd && currencyProvider.isConvertedFromUsd) ...[
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 6),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      SizedBox(
+                        width: double.infinity,
+                        child: Wrap(
+                          alignment: WrapAlignment.spaceBetween,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 8,
+                          runSpacing: 6,
                           children: [
                             Text(
-                              'Original USD',
+                              'Unusual Activity Score',
+                              style: TextStyle(
+                                color: colors.textSecondary,
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            RiskScoreBadge(
+                              score: alert.score,
+                              threshold: alert.threshold,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.baseline,
+                        textBaseline: TextBaseline.alphabetic,
+                        children: [
+                          Text(
+                            '${(alert.score * 100).toStringAsFixed(1)}%',
+                            style: TextStyle(
+                              color: colors.textPrimary,
+                              fontSize: 30,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: -0.6,
+                              fontFeatures: AppTheme.tabularFigures,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Alert threshold ${(alert.threshold * 100).toStringAsFixed(0)}%',
+                              style: TextStyle(
+                                color: colors.textMuted,
+                                fontSize: 12.5,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: alert.score.clamp(0.0, 1.0),
+                          backgroundColor: colors.surfaceMuted,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            alert.score >= 0.8
+                                ? colors.riskCritical
+                                : colors.riskMedium,
+                          ),
+                          minHeight: 6,
+                        ),
+                      ),
+                      if (alert.latestVerdict != null) ...[
+                        const SizedBox(height: 14),
+                        Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 8,
+                          runSpacing: 4,
+                          children: [
+                            Text(
+                              'Your decision:',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: colors.textSecondary,
+                              ),
+                            ),
+                            VerdictBadge(verdict: alert.latestVerdict!),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 14),
+
+                // Payment Details Card (Fixed USD overflow & double-conversion)
+                if (txn != null) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 14,
+                    ),
+                    decoration: BoxDecoration(
+                      color: colors.surface,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: colors.border),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4, bottom: 8),
+                          child: Text(
+                            'Payment Summary',
+                            style: TextStyle(
+                              color: colors.textPrimary,
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        Divider(color: colors.borderSubtle, height: 1),
+                        _buildDetailRow(context, 'Merchant', txn.merchant),
+                        Divider(color: colors.borderSubtle, height: 1),
+                        _buildDetailRow(
+                          context,
+                          'Amount',
+                          displayAmount,
+                          valueColor: colors.riskCritical,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        if (txn.isSourceUsd &&
+                            currencyProvider.isConvertedFromUsd)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: Text(
+                              'Original USD: \$${txn.amount.toStringAsFixed(2)} (1 USD = ${currencyProvider.activeRateFromUsd.toStringAsFixed(2)} ${currencyProvider.activeCurrency})',
                               style: TextStyle(
                                 color: colors.textMuted,
                                 fontSize: 11.5,
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            Flexible(
-                              child: Text(
-                                '\$${txn.amount.toStringAsFixed(2)} USD (Rate: 1 USD = ${currencyProvider.activeRateFromUsd.toStringAsFixed(2)} ${currencyProvider.activeCurrency})',
-                                style: TextStyle(
-                                  color: colors.textMuted,
-                                  fontSize: 11.5,
-                                  fontStyle: FontStyle.italic,
-                                ),
-                                textAlign: TextAlign.end,
-                                overflow: TextOverflow.ellipsis,
+                          ),
+                        Divider(color: colors.borderSubtle, height: 1),
+                        _buildDetailRow(
+                          context,
+                          'Category',
+                          AppColors.friendlyCategoryName(txn.category),
+                        ),
+                        Divider(color: colors.borderSubtle, height: 1),
+                        _buildDetailRow(context, 'Account', txn.cardLabel),
+                        Divider(color: colors.borderSubtle, height: 1),
+                        _buildDetailRow(
+                          context,
+                          'Time',
+                          dateFormat.format(txn.occurredAt),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                ],
+
+                // Plain-English Reasons + Optional Technical Breakdown
+                Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: colors.surface,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: colors.border),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Why this was flagged',
+                              style: TextStyle(
+                                color: colors.textPrimary,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                    ],
-                    _buildDetailRow(
-                      context,
-                      'Category',
-                      txn.category.replaceAll('_', ' ').toUpperCase(),
-                    ),
-                    _buildDetailRow(context, 'Card Label', txn.cardLabel),
-                    _buildDetailRow(
-                      context,
-                      'Transaction Time',
-                      dateFormat.format(txn.occurredAt),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 14),
-            ],
-
-            // Explainable AI / SHAP Factors Card
-            Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: colors.surface,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: colors.border, width: 1),
-                boxShadow: colors.cardShadow,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.insights_rounded,
-                        color: colors.primary,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Risk Factor Analysis',
-                          style: TextStyle(
-                            color: colors.textPrimary,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                          if (alert.reasons.isNotEmpty)
+                            TextButton(
+                              onPressed: () => setState(
+                                () => _showTechnicalFactors =
+                                    !_showTechnicalFactors,
+                              ),
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                ),
+                                minimumSize: const Size(0, 32),
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              child: Text(
+                                _showTechnicalFactors
+                                    ? 'Simple view'
+                                    : 'Signal breakdown',
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      if (alert.reasons.isEmpty)
+                        Text(
+                          'This transaction crossed your account risk threshold.',
+                          style: TextStyle(
+                            color: colors.textSecondary,
+                            fontSize: 13,
+                          ),
+                        )
+                      else if (_showTechnicalFactors)
+                        ...alert.reasons.map((r) => ShapFactorCard(reason: r))
+                      else
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: alert.reasons
+                              .map(
+                                (r) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 6),
+                                        child: Container(
+                                          width: 5,
+                                          height: 5,
+                                          decoration: BoxDecoration(
+                                            color: r.impact >= 0.5
+                                                ? colors.riskCritical
+                                                : colors.textSecondary,
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          r.text,
+                                          style: TextStyle(
+                                            color: colors.textSecondary,
+                                            fontSize: 13.5,
+                                            height: 1.4,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            RichieChatSheet.show(
+                              context,
+                              initialPrompt:
+                                  'Explain why Alert #${alert.id} ($displayAmount at ${txn?.merchant ?? "merchant"}) was flagged.',
+                            );
+                          },
+                          icon: const Icon(
+                            Icons.chat_bubble_outline_rounded,
+                            size: 16,
+                          ),
+                          label: const Text('Ask Richie about this alert'),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Factors contributing most strongly to this transaction being flagged:',
-                    style: TextStyle(color: colors.textMuted, fontSize: 12),
-                  ),
-                  const SizedBox(height: 14),
-                  if (alert.reasons.isEmpty)
-                    Text(
-                      'No specific risk factors flagged for this score.',
-                      style: TextStyle(
-                        color: colors.textSecondary,
-                        fontSize: 13,
-                      ),
-                    )
-                  else
-                    ...alert.reasons.map((r) => ShapFactorCard(reason: r)),
-                ],
-              ),
-            ),
+                ),
 
-            const SizedBox(height: 14),
+                const SizedBox(height: 14),
 
-            // Investigation Action Card
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: colors.surface,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: colors.border, width: 1),
-                boxShadow: colors.cardShadow,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Record Analyst Investigation',
-                    style: TextStyle(
-                      color: colors.textPrimary,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                    ),
+                // Human-Friendly Action Card
+                Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: colors.surface,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: colors.border),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Record authoritative triage judgment on this alert for audit trails.',
-                    style: TextStyle(color: colors.textMuted, fontSize: 12),
-                  ),
-                  const SizedBox(height: 16),
-
-                  DropdownButtonFormField<String>(
-                    isExpanded: true,
-                    initialValue: _selectedVerdict,
-                    decoration: const InputDecoration(
-                      labelText: 'Investigation Verdict',
-                      prefixIcon: Icon(Icons.gavel_rounded, size: 20),
-                    ),
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'confirmed_fraud',
-                        child: Text(
-                          'Confirmed Fraud (Block & Escalate)',
-                          overflow: TextOverflow.ellipsis,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        'Did you make this transaction?',
+                        style: TextStyle(
+                          color: colors.textPrimary,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                      DropdownMenuItem(
+                      const SizedBox(height: 4),
+                      Text(
+                        'Your response helps update protection for your account.',
+                        style: TextStyle(
+                          color: colors.textMuted,
+                          fontSize: 12.5,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      _buildVerdictOption(
+                        colors: colors,
                         value: 'false_positive',
-                        child: Text(
-                          'False Positive (Legitimate Spend)',
-                          overflow: TextOverflow.ellipsis,
+                        title: 'Yes, this was me',
+                        subtitle: 'Mark as legitimate spending',
+                        icon: Icons.check_circle_outline_rounded,
+                        accentColor: colors.riskLow,
+                      ),
+                      const SizedBox(height: 8),
+                      _buildVerdictOption(
+                        colors: colors,
+                        value: 'confirmed_fraud',
+                        title: 'No, report as fraud',
+                        subtitle: 'Flag unauthorized payment',
+                        icon: Icons.gpp_bad_outlined,
+                        accentColor: colors.riskCritical,
+                      ),
+                      const SizedBox(height: 8),
+                      _buildVerdictOption(
+                        colors: colors,
+                        value: 'needs_info',
+                        title: 'Not sure yet',
+                        subtitle: 'Keep under review while you verify',
+                        icon: Icons.schedule_rounded,
+                        accentColor: colors.riskMedium,
+                      ),
+
+                      const SizedBox(height: 14),
+
+                      TextField(
+                        controller: _notesController,
+                        maxLines: 2,
+                        decoration: const InputDecoration(
+                          labelText: 'Add a note (optional)',
+                          hintText: 'Any extra context for your record...',
                         ),
                       ),
-                      DropdownMenuItem(
-                        value: 'needs_info',
-                        child: Text(
-                          'Needs Information (Contact Cardholder)',
-                          overflow: TextOverflow.ellipsis,
-                        ),
+
+                      const SizedBox(height: 16),
+
+                      ElevatedButton(
+                        onPressed: _submitting ? null : _submitVerdict,
+                        child: _submitting
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text('Save Decision'),
                       ),
                     ],
-                    onChanged: (val) {
-                      if (val != null) setState(() => _selectedVerdict = val);
-                    },
                   ),
-
-                  const SizedBox(height: 14),
-
-                  TextField(
-                    controller: _notesController,
-                    maxLines: 3,
-                    decoration: const InputDecoration(
-                      labelText: 'Investigation Notes / Audit Justification',
-                      hintText: 'Document evidence, transaction verification, or customer contact notes...',
-                      alignLabelWithHint: true,
-                    ),
-                  ),
-
-                  const SizedBox(height: 18),
-
-                  ElevatedButton.icon(
-                    onPressed: _submitting ? null : _submitVerdict,
-                    icon: _submitting
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.save_rounded, size: 18),
-                    label: Text(
-                      _submitting
-                          ? 'Submitting Verdict...'
-                          : 'Record Investigation Verdict',
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-            const SizedBox(height: 24),
-          ],
+          ),
         ),
       ),
     );

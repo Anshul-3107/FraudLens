@@ -26,6 +26,10 @@ void main() {
       // Verify Sign In heading and button
       expect(find.widgetWithText(ElevatedButton, 'Sign In'), findsOneWidget);
 
+      // Verify phone login option is not present
+      expect(find.text('Continue with Phone'), findsNothing);
+      expect(find.byIcon(Icons.phone_android_rounded), findsNothing);
+
       // Verify Registration link
       expect(find.text('Register'), findsOneWidget);
     },

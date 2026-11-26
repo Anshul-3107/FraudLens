@@ -65,18 +65,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // App Brand Logo & Title
                   Center(
                     child: Container(
-                      width: 48,
-                      height: 48,
+                      width: 52,
+                      height: 52,
                       decoration: BoxDecoration(
-                        color: colors.surfaceSubtle,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: colors.borderSubtle,
-                          width: 1,
-                        ),
+                        color: colors.tealPrimary.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(14),
                       ),
                       child: Icon(
                         Icons.shield_outlined,
@@ -104,20 +99,12 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 28),
 
-                  // Login Form Card
                   Container(
-                    padding: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.all(22),
                     decoration: BoxDecoration(
                       color: colors.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: colors.borderSubtle, width: 1),
-                      boxShadow: [
-                        BoxShadow(
-                          color: colors.shadow,
-                          blurRadius: 4,
-                          offset: const Offset(0, 1),
-                        ),
-                      ],
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: colors.border),
                     ),
                     child: Form(
                       key: _formKey,
@@ -125,16 +112,16 @@ class _LoginScreenState extends State<LoginScreen> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Text(
-                            'Sign In',
+                            'Welcome back',
                             style: TextStyle(
                               color: colors.textPrimary,
-                              fontSize: 16,
+                              fontSize: 17,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Enter your credentials to access your financial activity.',
+                            'Sign in to review your transactions and alerts.',
                             style: TextStyle(
                               color: colors.textMuted,
                               fontSize: 13,
@@ -142,7 +129,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           const SizedBox(height: 20),
 
-                          // Username Field
                           TextFormField(
                             controller: _usernameController,
                             decoration: const InputDecoration(
@@ -160,9 +146,8 @@ class _LoginScreenState extends State<LoginScreen> {
                               return null;
                             },
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 14),
 
-                          // Password Field
                           TextFormField(
                             controller: _passwordController,
                             obscureText: _obscurePassword,
@@ -175,8 +160,8 @@ class _LoginScreenState extends State<LoginScreen> {
                               suffixIcon: IconButton(
                                 icon: Icon(
                                   _obscurePassword
-                                      ? Icons.visibility_off
-                                      : Icons.visibility,
+                                      ? Icons.visibility_off_outlined
+                                      : Icons.visibility_outlined,
                                   size: 20,
                                 ),
                                 onPressed: () => setState(
@@ -193,9 +178,8 @@ class _LoginScreenState extends State<LoginScreen> {
                               return null;
                             },
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 22),
 
-                          // Submit Button
                           ElevatedButton(
                             onPressed: authProvider.isLoading
                                 ? null
@@ -217,7 +201,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   const SizedBox(height: 18),
 
-                  // Registration Link
                   Wrap(
                     alignment: WrapAlignment.center,
                     crossAxisAlignment: WrapCrossAlignment.center,

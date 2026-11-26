@@ -53,13 +53,19 @@ class ApiConfig {
     // (10.0.2.2 or 127.0.0.1), clear it so it transparently connects to the live production Railway endpoint.
     if (saved != null &&
         (saved.trim() == 'http://10.0.2.2:8000' ||
-         saved.trim() == 'http://127.0.0.1:8000' ||
-         saved.trim().contains('localhost')) &&
+            saved.trim() == 'http://127.0.0.1:8000' ||
+            saved.trim().contains('localhost')) &&
         (kReleaseMode || !_useAndroidEmulator)) {
       await prefs.remove(_kPrefBaseUrlKey);
       _activeBaseUrl = defaultBaseUrl;
     } else if (saved != null && saved.trim().isNotEmpty) {
-      _activeBaseUrl = saved.trim();
+      final candidate = Uri.tryParse(saved.trim());
+      if (kReleaseMode && (candidate == null || !candidate.isScheme('https'))) {
+        await prefs.remove(_kPrefBaseUrlKey);
+        _activeBaseUrl = defaultBaseUrl;
+      } else {
+        _activeBaseUrl = saved.trim();
+      }
     } else {
       _activeBaseUrl = defaultBaseUrl;
     }
@@ -69,6 +75,10 @@ class ApiConfig {
     var sanitized = newUrl.trim();
     while (sanitized.endsWith('/')) {
       sanitized = sanitized.substring(0, sanitized.length - 1);
+    }
+    final parsed = Uri.tryParse(sanitized);
+    if (kReleaseMode && (parsed == null || !parsed.isScheme('https'))) {
+      throw ArgumentError('Only HTTPS URLs are permitted in release builds.');
     }
     _activeBaseUrl = sanitized;
     final prefs = await SharedPreferences.getInstance();
@@ -88,8 +98,6 @@ class ApiConfig {
   static String get logoutUrl => '$baseUrl/api/auth/logout/';
   static String get meUrl => '$baseUrl/api/auth/me/';
   static String get avatarUrl => '$baseUrl/api/auth/avatar/';
-  static String get sendOtpUrl => '$baseUrl/api/auth/phone/send-otp/';
-  static String get verifyOtpUrl => '$baseUrl/api/auth/phone/verify-otp/';
   static String get linkBankUrl => '$baseUrl/api/accounts/link-bank/';
   static String get summaryUrl => '$baseUrl/api/summary/';
   static String get cardsUrl => '$baseUrl/api/cards/';

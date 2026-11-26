@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -13,7 +14,6 @@ import '../../services/upi_parser.dart';
 import '../alerts/alerts_list_screen.dart';
 import '../cards/cards_list_screen.dart';
 import '../dashboard/dashboard_screen.dart';
-import '../investigations/investigations_list_screen.dart';
 import '../profile/profile_screen.dart';
 import '../transactions/transactions_list_screen.dart';
 
@@ -27,59 +27,57 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   int _currentIndex = 0;
 
-  final ScrollController _navScrollController = ScrollController();
-  final List<GlobalKey> _navItemKeys = List.generate(6, (_) => GlobalKey());
-
   DateTime? _lastBackPress;
   StreamSubscription<ParsedUpiNotification>? _notificationSub;
 
   @override
   void initState() {
     super.initState();
-    _scrollToSelectedTab(_currentIndex);
     _initNotificationListener();
   }
 
   void _initNotificationListener() {
     _notificationSub = NotificationListenerService.instance.onUpiPaymentCaptured
         .listen((upiPayment) {
-      if (!mounted) return;
-      _handleAutoCapturedPayment(upiPayment);
-    });
+          if (!mounted) return;
+          _handleAutoCapturedPayment(upiPayment);
+        });
 
-    // Check permission prompt on launch
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final granted =
-          await NotificationListenerService.instance.isPermissionGranted();
+      final granted = await NotificationListenerService.instance
+          .isPermissionGranted();
       if (!granted && mounted) {
         _showNotificationPermissionBanner();
       }
-      final locGranted =
-          await NotificationListenerService.instance.isLocationPermissionGranted();
+      final locGranted = await NotificationListenerService.instance
+          .isLocationPermissionGranted();
       if (!locGranted) {
         await NotificationListenerService.instance.requestLocationPermission();
       }
     });
   }
 
-  Future<void> _handleAutoCapturedPayment(ParsedUpiNotification upiPayment) async {
+  Future<void> _handleAutoCapturedPayment(
+    ParsedUpiNotification upiPayment,
+  ) async {
     final txnProvider = context.read<TransactionProvider>();
     final alertProvider = context.read<AlertProvider>();
     final dashProvider = context.read<DashboardProvider>();
     final cardProvider = context.read<CardProvider>();
 
     try {
-      // Auto-capture device GPS location at the instant payment is detected
       Map<String, dynamic>? locationData;
       try {
-        locationData =
-            await NotificationListenerService.instance.getCurrentLocation();
+        locationData = await NotificationListenerService.instance
+            .getCurrentLocation();
       } catch (_) {}
 
-      final double? lat = locationData != null && locationData['latitude'] is num
+      final double? lat =
+          locationData != null && locationData['latitude'] is num
           ? (locationData['latitude'] as num).toDouble()
           : null;
-      final double? lon = locationData != null && locationData['longitude'] is num
+      final double? lon =
+          locationData != null && locationData['longitude'] is num
           ? (locationData['longitude'] as num).toDouble()
           : null;
       final String? locName = locationData?['city'] as String?;
@@ -102,26 +100,23 @@ class _AppShellState extends State<AppShell> {
       final scoring = res['scoring'] as Map<String, dynamic>? ?? {};
       final bool isFlagged = scoring['flagged'] == true;
       final bool isRegistered = scoring['is_registered_account'] == true;
-      final bool isEnriched = scoring['is_duplicate_enriched'] == true;
 
-      // Refresh alert, summary, and card lists
       await alertProvider.loadAlerts(page: 1);
       await dashProvider.loadSummary();
       await cardProvider.loadCards();
 
       if (!mounted) return;
 
-      final sourceLabel = upiPayment.source == 'sms' ? 'Bank SMS' : 'UPI Notification';
+      final sourceLabel = upiPayment.source == 'sms' ? 'Bank SMS' : 'UPI';
       final bool isReceived = upiPayment.isReceived;
       final colors = AppColors.of(context);
 
-      // Refined fintech notification toast
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           duration: const Duration(seconds: 5),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(12),
             side: BorderSide(color: colors.border, width: 1),
           ),
           backgroundColor: colors.surface,
@@ -131,61 +126,51 @@ class _AppShellState extends State<AppShell> {
                 isFlagged
                     ? Icons.warning_amber_rounded
                     : (isReceived
-                        ? Icons.south_west_rounded
-                        : Icons.check_circle_outline_rounded),
+                          ? Icons.south_west_rounded
+                          : Icons.check_circle_outline_rounded),
                 color: isFlagged
                     ? colors.riskCritical
-                    : (isReceived
-                        ? colors.riskLow
-                        : colors.tealLight),
-                size: 22,
+                    : (isReceived ? colors.riskLow : colors.tealPrimary),
+                size: 20,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      isEnriched
-                          ? 'Verified by $sourceLabel: Safe'
-                          : isFlagged
-                              ? 'Needs Action: Suspicious Transaction'
-                              : (isReceived
-                                  ? 'Money Received ($sourceLabel)'
-                                  : 'Captured via $sourceLabel: Safe'),
+                      isFlagged
+                          ? 'Unusual payment detected'
+                          : (isReceived
+                                ? 'Money received ($sourceLabel)'
+                                : 'Payment recorded ($sourceLabel)'),
                       style: TextStyle(
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w600,
                         fontSize: 13.5,
                         color: colors.textPrimary,
                       ),
                     ),
                     Text(
-                      isReceived
-                          ? '₹${upiPayment.amount.toStringAsFixed(2)} received from ${upiPayment.merchant}'
-                              '${!isRegistered ? " • Unregistered Account" : ""}'
-                              '${isEnriched ? " (Deduplicated)" : ""}'
-                          : '₹${upiPayment.amount.toStringAsFixed(2)} sent to ${upiPayment.merchant}'
-                              '${!isRegistered ? " • Unregistered Account" : ""}'
-                              '${isEnriched ? " (Deduplicated)" : ""}',
-                      style: TextStyle(fontSize: 12, color: colors.textSecondary),
+                      '₹${upiPayment.amount.toStringAsFixed(2)} ${isReceived ? 'from' : 'to'} ${upiPayment.merchant}'
+                      '${!isRegistered ? ' · Unlinked account' : ''}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colors.textSecondary,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
             ],
           ),
-          action: isFlagged
-              ? SnackBarAction(
-                  label: 'Review',
-                  textColor: colors.riskCritical,
-                  onPressed: () => _onTabSelected(2), // Jump to Alerts/Review tab
-                )
-              : SnackBarAction(
-                  label: 'View',
-                  textColor: colors.primary,
-                  onPressed: () => _onTabSelected(1), // Jump to Transactions tab
-                ),
+          action: SnackBarAction(
+            label: isFlagged ? 'Review' : 'View',
+            textColor: isFlagged ? colors.riskCritical : colors.primary,
+            onPressed: () => _onTabSelected(isFlagged ? 2 : 1),
+          ),
         ),
       );
     } catch (_) {}
@@ -194,22 +179,27 @@ class _AppShellState extends State<AppShell> {
   void _showNotificationPermissionBanner() {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        duration: const Duration(seconds: 8),
+        duration: const Duration(seconds: 7),
+        behavior: SnackBarBehavior.floating,
         content: const Row(
           children: [
-            Icon(Icons.notifications_active_outlined, color: Colors.white, size: 22),
+            Icon(
+              Icons.notifications_active_outlined,
+              color: Colors.white,
+              size: 20,
+            ),
             SizedBox(width: 10),
             Expanded(
               child: Text(
-                'Enable Notification & SMS Access to auto-detect payments from Google Pay, PhonePe & Bank SMS',
-                style: TextStyle(fontSize: 12),
+                'Enable Notification & SMS access to monitor UPI and bank payments automatically.',
+                style: TextStyle(fontSize: 12.5),
               ),
             ),
           ],
         ),
         action: SnackBarAction(
           label: 'Enable',
-          textColor: Colors.amberAccent,
+          textColor: Colors.tealAccent,
           onPressed: () async {
             await NotificationListenerService.instance.requestPermission();
             await NotificationListenerService.instance.requestSmsPermission();
@@ -222,34 +212,27 @@ class _AppShellState extends State<AppShell> {
   @override
   void dispose() {
     _notificationSub?.cancel();
-    _navScrollController.dispose();
     super.dispose();
   }
 
   void _onTabSelected(int index) {
-    if (index < 0 || index >= _navItemKeys.length) return;
-
+    if (index < 0 || index >= 4) return;
     if (_currentIndex != index) {
       setState(() {
         _currentIndex = index;
       });
     }
-
-    _scrollToSelectedTab(index);
   }
 
   void _handleSystemBack(bool didPop, Object? result) {
     if (didPop || !mounted) return;
 
-    // Back from another tab returns to the Dashboard.
     if (_currentIndex != 0) {
       _lastBackPress = null;
       _onTabSelected(0);
       return;
     }
 
-    // On the Dashboard, require a second Back press within
-    // two seconds before exiting the app.
     final now = DateTime.now();
     final lastPress = _lastBackPress;
 
@@ -272,197 +255,20 @@ class _AppShellState extends State<AppShell> {
       );
   }
 
-  void _scrollToSelectedTab(int index) {
-    if (index < 0 || index >= _navItemKeys.length) return;
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-
-      final keyContext = _navItemKeys[index].currentContext;
-
-      if (keyContext != null) {
-        Scrollable.ensureVisible(
-          keyContext,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOutCubic,
-          alignment: 0.5,
-        );
-      }
-    });
-  }
-
-  Widget _buildScrollableBottomNav({
-    required BuildContext context,
-    required AppColors colors,
+  Widget _buildAlertIcon({
+    required IconData icon,
     required int openAlertsCount,
-    required double maxWidth,
-  }) {
-    final destinations = [
-      const _NavDestinationItem(
-        label: 'Dashboard',
-        icon: Icons.dashboard_outlined,
-        selectedIcon: Icons.dashboard_rounded,
-      ),
-      const _NavDestinationItem(
-        label: 'Transactions',
-        icon: Icons.receipt_long_outlined,
-        selectedIcon: Icons.receipt_long_rounded,
-      ),
-      _NavDestinationItem(
-        label: 'Alerts',
-        icon: Icons.warning_amber_rounded,
-        selectedIcon: Icons.warning_rounded,
-        badgeCount: openAlertsCount,
-      ),
-      const _NavDestinationItem(
-        label: 'Review',
-        icon: Icons.gavel_outlined,
-        selectedIcon: Icons.gavel_rounded,
-      ),
-      const _NavDestinationItem(
-        label: 'Cards',
-        icon: Icons.credit_card_outlined,
-        selectedIcon: Icons.credit_card_rounded,
-      ),
-      const _NavDestinationItem(
-        label: 'Profile',
-        icon: Icons.person_outline_rounded,
-        selectedIcon: Icons.person_rounded,
-      ),
-    ];
-
-    // Keep each destination wide enough for its label.
-    const double itemMinWidth = 88.0;
-
-    final bool canFitAll = maxWidth >= itemMinWidth * destinations.length;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: colors.surface,
-        border: Border(top: BorderSide(color: colors.border, width: 1)),
-        boxShadow: [
-          BoxShadow(
-            color: colors.isDark ? Colors.black38 : const Color(0x0A0F172A),
-            offset: const Offset(0, -2),
-            blurRadius: 8,
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        bottom: true,
-        child: SizedBox(
-          height: 64,
-          child: SingleChildScrollView(
-            controller: _navScrollController,
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minWidth: maxWidth),
-              child: Row(
-                mainAxisAlignment: canFitAll
-                    ? MainAxisAlignment.spaceEvenly
-                    : MainAxisAlignment.start,
-                children: [
-                  for (int i = 0; i < destinations.length; i++)
-                    _buildNavItem(
-                      index: i,
-                      item: destinations[i],
-                      isSelected: _currentIndex == i,
-                      colors: colors,
-                      minWidth: itemMinWidth,
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem({
-    required int index,
-    required _NavDestinationItem item,
-    required bool isSelected,
     required AppColors colors,
-    required double minWidth,
   }) {
-    Widget iconWidget = Icon(
-      isSelected ? item.selectedIcon : item.icon,
-      size: 22,
-      color: isSelected ? colors.primary : colors.textMuted,
-    );
-
-    if (item.badgeCount != null && item.badgeCount! > 0) {
-      iconWidget = Badge(
-        backgroundColor: colors.riskCritical,
-        textColor: Colors.white,
-        label: Text(
-          '${item.badgeCount}',
-          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
-        ),
-        child: iconWidget,
-      );
-    }
-
-    return ConstrainedBox(
-      constraints: BoxConstraints(minWidth: minWidth),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          key: _navItemKeys[index],
-          onTap: () => _onTabSelected(index),
-          borderRadius: BorderRadius.circular(12),
-          splashColor: colors.primary.withValues(alpha: 0.12),
-          highlightColor: colors.primary.withValues(alpha: 0.08),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeOutCubic,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? (colors.isDark
-                            ? colors.primary.withValues(alpha: 0.18)
-                            : colors.primary.withValues(alpha: 0.12))
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(16),
-                    border: isSelected
-                        ? Border.all(
-                            color: colors.primary.withValues(alpha: 0.35),
-                            width: 1,
-                          )
-                        : Border.all(color: Colors.transparent, width: 1),
-                  ),
-                  child: iconWidget,
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  item.label,
-                  maxLines: 1,
-                  softWrap: false,
-                  overflow: TextOverflow.visible,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                    color: isSelected ? colors.primary : colors.textMuted,
-                    letterSpacing: -0.1,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+    if (openAlertsCount <= 0) return Icon(icon);
+    return Badge(
+      backgroundColor: colors.riskCritical,
+      textColor: Colors.white,
+      label: Text(
+        openAlertsCount > 99 ? '99+' : '$openAlertsCount',
+        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
       ),
+      child: Icon(icon),
     );
   }
 
@@ -476,9 +282,7 @@ class _AppShellState extends State<AppShell> {
       DashboardScreen(onNavigateTab: _onTabSelected),
       const TransactionsListScreen(),
       const AlertsListScreen(),
-      const InvestigationsListScreen(),
       CardsListScreen(onNavigateTab: _onTabSelected),
-      const ProfileScreen(),
     ];
 
     return PopScope<Object?>(
@@ -489,7 +293,6 @@ class _AppShellState extends State<AppShell> {
           final isWide = constraints.maxWidth >= 768;
 
           if (isWide) {
-            // Desktop and tablet layout with NavigationRail.
             return Scaffold(
               backgroundColor: colors.background,
               body: Row(
@@ -498,7 +301,7 @@ class _AppShellState extends State<AppShell> {
                     selectedIndex: _currentIndex,
                     onDestinationSelected: _onTabSelected,
                     backgroundColor: colors.surface,
-                    indicatorColor: colors.primary.withValues(alpha: 0.12),
+                    indicatorColor: colors.primary.withValues(alpha: 0.14),
                     extended: constraints.maxWidth >= 1024,
                     leading: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 20),
@@ -508,25 +311,22 @@ class _AppShellState extends State<AppShell> {
                           Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: colors.primary.withValues(alpha: 0.15),
+                              color: colors.primary.withValues(alpha: 0.14),
                               borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: colors.primary.withValues(alpha: 0.25),
-                              ),
                             ),
                             child: Icon(
                               Icons.shield_outlined,
                               color: colors.primary,
-                              size: 22,
+                              size: 20,
                             ),
                           ),
                           if (constraints.maxWidth >= 1024) ...[
-                            const SizedBox(width: 12),
+                            const SizedBox(width: 10),
                             Text(
                               'FraudLens',
                               style: TextStyle(
                                 color: colors.textPrimary,
-                                fontSize: 18,
+                                fontSize: 17,
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: -0.3,
                               ),
@@ -535,56 +335,63 @@ class _AppShellState extends State<AppShell> {
                         ],
                       ),
                     ),
+                    trailing: Expanded(
+                      child: Align(
+                        alignment: Alignment.bottomCenter,
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: IconButton(
+                            tooltip: 'Account & Settings',
+                            icon: Icon(
+                              Icons.settings_outlined,
+                              color: colors.textSecondary,
+                            ),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const ProfileScreen(),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
                     destinations: [
                       const NavigationRailDestination(
-                        icon: Icon(Icons.dashboard_outlined),
-                        selectedIcon: Icon(Icons.dashboard_rounded),
-                        label: Text('Dashboard'),
+                        icon: Icon(Icons.home_outlined),
+                        selectedIcon: Icon(Icons.home_rounded),
+                        label: Text('Home'),
                       ),
                       const NavigationRailDestination(
                         icon: Icon(Icons.receipt_long_outlined),
                         selectedIcon: Icon(Icons.receipt_long_rounded),
-                        label: Text('Transactions'),
+                        label: Text('Activity'),
                       ),
                       NavigationRailDestination(
-                        icon: Badge(
-                          isLabelVisible: openAlertsCount > 0,
-                          backgroundColor: colors.riskCritical,
-                          textColor: Colors.white,
-                          label: Text('$openAlertsCount'),
-                          child: const Icon(Icons.warning_amber_rounded),
+                        icon: _buildAlertIcon(
+                          icon: Icons.shield_outlined,
+                          openAlertsCount: openAlertsCount,
+                          colors: colors,
                         ),
-                        selectedIcon: Badge(
-                          isLabelVisible: openAlertsCount > 0,
-                          backgroundColor: colors.riskCritical,
-                          textColor: Colors.white,
-                          label: Text('$openAlertsCount'),
-                          child: const Icon(Icons.warning_rounded),
+                        selectedIcon: _buildAlertIcon(
+                          icon: Icons.shield_rounded,
+                          openAlertsCount: openAlertsCount,
+                          colors: colors,
                         ),
-                        label: const Text('Fraud Alerts'),
+                        label: const Text('Alerts'),
                       ),
                       const NavigationRailDestination(
-                        icon: Icon(Icons.gavel_outlined),
-                        selectedIcon: Icon(Icons.gavel_rounded),
-                        label: Text('Investigations'),
-                      ),
-                      const NavigationRailDestination(
-                        icon: Icon(Icons.credit_card_outlined),
-                        selectedIcon: Icon(Icons.credit_card_rounded),
-                        label: Text('Cards'),
-                      ),
-                      const NavigationRailDestination(
-                        icon: Icon(Icons.person_outline_rounded),
-                        selectedIcon: Icon(Icons.person_rounded),
-                        label: Text('Profile'),
+                        icon: Icon(Icons.account_balance_wallet_outlined),
+                        selectedIcon: Icon(
+                          Icons.account_balance_wallet_rounded,
+                        ),
+                        label: Text('Accounts'),
                       ),
                     ],
                   ),
-                  VerticalDivider(
-                    width: 1,
-                    thickness: 1,
-                    color: colors.borderSubtle,
-                  ),
+                  VerticalDivider(width: 1, thickness: 1, color: colors.border),
                   Expanded(
                     child: _FadeIndexedStack(
                       index: _currentIndex,
@@ -596,15 +403,50 @@ class _AppShellState extends State<AppShell> {
             );
           }
 
-          // Mobile layout with horizontally scrollable navigation.
           return Scaffold(
             backgroundColor: colors.background,
             body: _FadeIndexedStack(index: _currentIndex, children: screens),
-            bottomNavigationBar: _buildScrollableBottomNav(
-              context: context,
-              colors: colors,
-              openAlertsCount: openAlertsCount,
-              maxWidth: constraints.maxWidth,
+            bottomNavigationBar: Container(
+              decoration: BoxDecoration(
+                color: colors.surface,
+                border: Border(
+                  top: BorderSide(color: colors.border, width: 0.8),
+                ),
+              ),
+              child: NavigationBar(
+                selectedIndex: _currentIndex,
+                onDestinationSelected: _onTabSelected,
+                destinations: [
+                  const NavigationDestination(
+                    icon: Icon(Icons.home_outlined),
+                    selectedIcon: Icon(Icons.home_rounded),
+                    label: 'Home',
+                  ),
+                  const NavigationDestination(
+                    icon: Icon(Icons.receipt_long_outlined),
+                    selectedIcon: Icon(Icons.receipt_long_rounded),
+                    label: 'Activity',
+                  ),
+                  NavigationDestination(
+                    icon: _buildAlertIcon(
+                      icon: Icons.shield_outlined,
+                      openAlertsCount: openAlertsCount,
+                      colors: colors,
+                    ),
+                    selectedIcon: _buildAlertIcon(
+                      icon: Icons.shield_rounded,
+                      openAlertsCount: openAlertsCount,
+                      colors: colors,
+                    ),
+                    label: 'Alerts',
+                  ),
+                  const NavigationDestination(
+                    icon: Icon(Icons.account_balance_wallet_outlined),
+                    selectedIcon: Icon(Icons.account_balance_wallet_rounded),
+                    label: 'Accounts',
+                  ),
+                ],
+              ),
             ),
           );
         },
@@ -617,10 +459,7 @@ class _FadeIndexedStack extends StatefulWidget {
   final int index;
   final List<Widget> children;
 
-  const _FadeIndexedStack({
-    required this.index,
-    required this.children,
-  });
+  const _FadeIndexedStack({required this.index, required this.children});
 
   @override
   State<_FadeIndexedStack> createState() => _FadeIndexedStackState();
@@ -636,7 +475,7 @@ class _FadeIndexedStackState extends State<_FadeIndexedStack>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 180),
+      duration: const Duration(milliseconds: 160),
     );
     _animation = CurvedAnimation(
       parent: _controller,
@@ -663,24 +502,7 @@ class _FadeIndexedStackState extends State<_FadeIndexedStack>
   Widget build(BuildContext context) {
     return FadeTransition(
       opacity: _animation,
-      child: IndexedStack(
-        index: widget.index,
-        children: widget.children,
-      ),
+      child: IndexedStack(index: widget.index, children: widget.children),
     );
   }
-}
-
-class _NavDestinationItem {
-  final String label;
-  final IconData icon;
-  final IconData selectedIcon;
-  final int? badgeCount;
-
-  const _NavDestinationItem({
-    required this.label,
-    required this.icon,
-    required this.selectedIcon,
-    this.badgeCount,
-  });
 }

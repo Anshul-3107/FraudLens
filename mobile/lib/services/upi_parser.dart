@@ -67,7 +67,10 @@ class UpiParser {
     var cleaned = name.trim();
     cleaned = cleaned.replaceAll(RegExp(r'[\s.,;:\-_]+$'), '');
     cleaned = cleaned.replaceAll(
-      RegExp(r'^(?:PhonePe|Google Pay|GPay|Paytm|Alert:?|Dear Customer,?)\s*', caseSensitive: false),
+      RegExp(
+        r'^(?:PhonePe|Google Pay|GPay|Paytm|Alert:?|Dear Customer,?)\s*',
+        caseSensitive: false,
+      ),
       '',
     );
     return cleaned.trim();
@@ -113,7 +116,8 @@ class UpiParser {
     // 3. Sender / Merchant Extraction
     String merchant = isReceived ? 'Sender' : 'UPI Merchant';
     if (isReceived) {
-      final sentMatch = _sentYouRegex.firstMatch(text) ?? _sentYouRegex.firstMatch(combined);
+      final sentMatch =
+          _sentYouRegex.firstMatch(text) ?? _sentYouRegex.firstMatch(combined);
       if (sentMatch != null) {
         String cand = sentMatch.group(1)?.trim() ?? '';
         cand = _cleanSenderName(cand);
@@ -124,7 +128,8 @@ class UpiParser {
         final recMatch = _senderReceivedRegex.firstMatch(combined);
         if (recMatch != null) {
           String cand = recMatch.group(1)?.trim() ?? '';
-          if (cand.toUpperCase().startsWith('UPI/') || cand.toUpperCase().startsWith('VPA/')) {
+          if (cand.toUpperCase().startsWith('UPI/') ||
+              cand.toUpperCase().startsWith('VPA/')) {
             final parts = cand.split('/');
             cand = parts.last.trim();
           }

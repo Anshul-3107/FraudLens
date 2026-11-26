@@ -8,6 +8,8 @@ import '../../providers/transaction_provider.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/error_view.dart';
 import '../../widgets/loading_indicator.dart';
+import '../profile/profile_screen.dart';
+import 'link_account_screen.dart';
 
 class CardsListScreen extends StatefulWidget {
   final Function(int tabIndex)? onNavigateTab;
@@ -30,6 +32,45 @@ class _CardsListScreenState extends State<CardsListScreen> {
     });
   }
 
+  String _accountInitials(String label) {
+    final cleaned = label.trim().toUpperCase();
+    if (cleaned.isEmpty) return 'AC';
+    final words = cleaned
+        .split(RegExp(r'\s+'))
+        .where((w) => w.isNotEmpty)
+        .toList();
+    if (words.length >= 2 && words[0].isNotEmpty && words[1].isNotEmpty) {
+      final first = words[0][0];
+      final second = words[1][0];
+      if (RegExp(r'[A-Z]').hasMatch(first) &&
+          RegExp(r'[A-Z]').hasMatch(second)) {
+        return '$first$second';
+      }
+    }
+    final alpha = cleaned.replaceAll(RegExp(r'[^A-Z]'), '');
+    if (alpha.length >= 2) return alpha.substring(0, 2);
+    if (alpha.length == 1) return alpha;
+    return 'AC';
+  }
+
+  Color _badgeTint(AppColors colors, int index) {
+    final tints = [
+      colors.tealPrimary,
+      colors.indigo,
+      colors.cyan,
+      colors.emerald,
+      colors.violet,
+    ];
+    return tints[index % tints.length];
+  }
+
+  Future<void> _openLinkBank() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const LinkAccountScreen()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
@@ -38,8 +79,23 @@ class _CardsListScreenState extends State<CardsListScreen> {
     return Scaffold(
       backgroundColor: colors.background,
       appBar: AppBar(
-        title: const Text('Payment Cards'),
+        title: const Text('Accounts'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.add_rounded),
+            tooltip: 'Link bank or card',
+            onPressed: _openLinkBank,
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: 'Account & Settings',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ProfileScreen()),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
             tooltip: 'Refresh',
@@ -48,241 +104,187 @@ class _CardsListScreenState extends State<CardsListScreen> {
         ],
       ),
       body: cardProvider.isLoading && cardProvider.cards.isEmpty
-          ? const FintechLoadingIndicator(label: 'Loading cards...')
+          ? const FintechLoadingIndicator(label: 'Loading accounts...')
           : cardProvider.errorMessage != null && cardProvider.cards.isEmpty
           ? ErrorView(
               message: cardProvider.errorMessage!,
               onRetry: () => cardProvider.loadCards(),
             )
           : cardProvider.cards.isEmpty
-          ? const EmptyStateView(
-              icon: Icons.credit_card_outlined,
-              title: 'No Cards or Accounts Yet',
-              message: 'Cards are automatically linked when transactions occur via UPI notifications, Bank SMS, or manual recording.',
+          ? EmptyStateView(
+              icon: Icons.account_balance_wallet_outlined,
+              title: 'No Accounts Linked',
+              message: 'Link a bank account or card, or let FraudLens automatically add accounts from payment notifications.',
+              actionLabel: 'Link bank account',
+              onAction: _openLinkBank,
             )
           : RefreshIndicator(
               onRefresh: () => cardProvider.loadCards(),
               color: colors.primary,
-              child: ListView.separated(
-                padding: const EdgeInsets.all(16),
-                itemCount: cardProvider.cards.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final card = cardProvider.cards[index];
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 720),
+                  child: ListView.separated(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                    itemCount: cardProvider.cards.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 10),
+                    itemBuilder: (context, index) {
+                      final card = cardProvider.cards[index];
+                      final isUnregistered = card.label.toLowerCase().contains(
+                        'unregistered',
+                      );
+                      final accent = _badgeTint(colors, index);
 
-                  // Curated fintech card gradients
-                  final List<List<Color>> cardGradients = [
-                    [const Color(0xFF0F2E25), const Color(0xFF134E4A), const Color(0xFF0F172A)],
-                    [const Color(0xFF1E1B4B), const Color(0xFF312E81), const Color(0xFF0F172A)],
-                    [const Color(0xFF1E293B), const Color(0xFF334155), const Color(0xFF0F172A)],
-                    [const Color(0xFF4C0519), const Color(0xFF701A75), const Color(0xFF0F172A)],
-                    [const Color(0xFF1E3A5F), const Color(0xFF0284C7), const Color(0xFF0F172A)],
-                  ];
-                  final gradient = cardGradients[index % cardGradients.length];
-
-                  return Container(
-                    decoration: BoxDecoration(
-                      color: colors.surface,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: colors.border, width: 1),
-                      boxShadow: colors.cardShadow,
-                    ),
-                    padding: const EdgeInsets.all(14),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Aesthetic Digital Payment Card Representation
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(18),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: gradient,
-                            ),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.12),
-                              width: 1,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: gradient[0].withValues(alpha: 0.35),
-                                offset: const Offset(0, 4),
-                                blurRadius: 10,
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  // EMV Chip graphic & Contactless
-                                  Row(
-                                    children: [
-                                      Container(
-                                        width: 32,
-                                        height: 24,
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFFBBF24).withValues(alpha: 0.85),
-                                          borderRadius: BorderRadius.circular(4),
-                                          border: Border.all(
-                                            color: const Color(0xFFD97706),
-                                            width: 1,
-                                          ),
-                                        ),
-                                        child: Center(
-                                          child: Container(
-                                            width: 24,
-                                            height: 1,
-                                            color: const Color(0xFFB45309).withValues(alpha: 0.6),
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Icon(
-                                        Icons.contactless_rounded,
-                                        color: Colors.white.withValues(alpha: 0.85),
-                                        size: 20,
-                                      ),
-                                    ],
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 3,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withValues(alpha: 0.12),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Text(
-                                      'CARD #${card.id}',
-                                      style: const TextStyle(
-                                        color: Colors.white70,
-                                        fontSize: 10.5,
-                                        fontWeight: FontWeight.w700,
-                                        letterSpacing: 0.5,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 20),
-                              Text(
-                                card.label,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16.5,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: -0.2,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 14),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  const Text(
-                                    '•••• •••• •••• 4242',
-                                    style: TextStyle(
-                                      color: Colors.white60,
-                                      fontSize: 12.5,
-                                      fontFamily: 'monospace',
-                                      letterSpacing: 1.5,
-                                    ),
-                                  ),
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Container(
-                                        width: 7,
-                                        height: 7,
-                                        decoration: const BoxDecoration(
-                                          color: Color(0xFF34D399),
-                                          shape: BoxShape.circle,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      const Text(
-                                        'PROTECTED',
-                                        style: TextStyle(
-                                          color: Color(0xFF34D399),
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w700,
-                                          letterSpacing: 0.5,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
+                      return Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: colors.surface,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: colors.border),
                         ),
-                        const SizedBox(height: 12),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            OutlinedButton.icon(
-                              onPressed: () {
-                                context.read<DashboardProvider>().setCardFilter(
-                                  card,
-                                );
-                                widget.onNavigateTab?.call(0);
-                              },
-                              icon: const Icon(
-                                Icons.analytics_outlined,
-                                size: 14,
-                              ),
-                              label: const Text('Analytics'),
-                              style: OutlinedButton.styleFrom(
-                                visualDensity: VisualDensity.compact,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 6,
+                            Row(
+                              children: [
+                                Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: accent.withValues(
+                                      alpha: colors.isDark ? 0.16 : 0.10,
+                                    ),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    _accountInitials(card.label),
+                                    style: TextStyle(
+                                      color: accent,
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
                                 ),
-                                textStyle: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        card.label,
+                                        style: TextStyle(
+                                          color: colors.textPrimary,
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 3),
+                                      Row(
+                                        children: [
+                                          Container(
+                                            width: 6,
+                                            height: 6,
+                                            decoration: BoxDecoration(
+                                              color: isUnregistered
+                                                  ? colors.riskMedium
+                                                  : colors.riskLow,
+                                              shape: BoxShape.circle,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Expanded(
+                                            child: Text(
+                                              isUnregistered
+                                                  ? 'Unlinked · Auto-captured'
+                                                  : 'Monitored · ID #${card.id}',
+                                              style: TextStyle(
+                                                color: colors.textMuted,
+                                                fontSize: 12,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
+                              ],
                             ),
-                            const SizedBox(width: 8),
-                            FilledButton.icon(
-                              onPressed: () {
-                                context.read<TransactionProvider>().setCard(
-                                  card.id,
-                                );
-                                widget.onNavigateTab?.call(1);
-                              },
-                              icon: const Icon(
-                                Icons.receipt_long_rounded,
-                                size: 14,
-                              ),
-                              label: const Text('Transactions'),
-                              style: FilledButton.styleFrom(
-                                visualDensity: VisualDensity.compact,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 6,
-                                ),
-                                textStyle: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                ),
+                            const SizedBox(height: 14),
+                            Divider(color: colors.borderSubtle, height: 1),
+                            const SizedBox(height: 12),
+                            // Wrap guarantees zero horizontal overflow at 320px or high font scale
+                            SizedBox(
+                              width: double.infinity,
+                              child: Wrap(
+                                alignment: WrapAlignment.start,
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  OutlinedButton.icon(
+                                    onPressed: () {
+                                      context
+                                          .read<TransactionProvider>()
+                                          .setCard(card.id);
+                                      widget.onNavigateTab?.call(1);
+                                    },
+                                    icon: const Icon(
+                                      Icons.receipt_long_outlined,
+                                      size: 16,
+                                    ),
+                                    label: const Text('Activity'),
+                                    style: OutlinedButton.styleFrom(
+                                      minimumSize: const Size(0, 38),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 14,
+                                        vertical: 8,
+                                      ),
+                                      textStyle: const TextStyle(
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  OutlinedButton.icon(
+                                    onPressed: () {
+                                      context
+                                          .read<DashboardProvider>()
+                                          .setCardFilter(card);
+                                      widget.onNavigateTab?.call(0);
+                                    },
+                                    icon: const Icon(
+                                      Icons.bar_chart_rounded,
+                                      size: 16,
+                                    ),
+                                    label: const Text('Insights'),
+                                    style: OutlinedButton.styleFrom(
+                                      minimumSize: const Size(0, 38),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 14,
+                                        vertical: 8,
+                                      ),
+                                      textStyle: const TextStyle(
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
                         ),
-                      ],
-                    ),
-                  );
-                },
+                      );
+                    },
+                  ),
+                ),
               ),
             ),
     );

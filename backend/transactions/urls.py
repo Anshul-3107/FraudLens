@@ -5,7 +5,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     AlertViewSet, AvatarUploadView, CardViewSet, ExchangeRatesView, InvestigationViewSet,
     LinkBankAccountView, LoginView, LogoutView, MeView, RegisterView,
-    RichieChatView, SendOtpView, SummaryView, TransactionViewSet, VerifyOtpView,
+    RichieChatView, SummaryView, TransactionViewSet,
 )
 
 router = DefaultRouter()
@@ -20,8 +20,6 @@ urlpatterns = [
     path("auth/logout/", LogoutView.as_view()),
     path("auth/me/", MeView.as_view()),
     path("auth/avatar/", AvatarUploadView.as_view()),
-    path("auth/phone/send-otp/", SendOtpView.as_view()),
-    path("auth/phone/verify-otp/", VerifyOtpView.as_view()),
     path("accounts/link-bank/", LinkBankAccountView.as_view()),
     path("summary/", SummaryView.as_view()),
     path("exchange-rates/", ExchangeRatesView.as_view()),

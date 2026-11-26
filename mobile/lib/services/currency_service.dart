@@ -296,11 +296,23 @@ class CurrencyService {
 
     // 2. Check all configured system locales on the device
     const indianLanguages = {
-      'hi', 'bn', 'te', 'mr', 'ta', 'gu', 'kn', 'ml', 'pa', 'or', 'as', 'ur',
+      'hi',
+      'bn',
+      'te',
+      'mr',
+      'ta',
+      'gu',
+      'kn',
+      'ml',
+      'pa',
+      'or',
+      'as',
+      'ur',
     };
     for (final loc in PlatformDispatcher.instance.locales) {
       final cc = loc.countryCode?.toUpperCase();
-      if (cc == 'IN' || indianLanguages.contains(loc.languageCode.toLowerCase())) {
+      if (cc == 'IN' ||
+          indianLanguages.contains(loc.languageCode.toLowerCase())) {
         return 'INR';
       }
       if (cc != null && _countryToCurrency.containsKey(cc)) {
@@ -311,7 +323,8 @@ class CurrencyService {
     // 3. Fallback to primary system locale
     final primary = PlatformDispatcher.instance.locale;
     final primaryCountry = primary.countryCode?.toUpperCase();
-    if (primaryCountry != null && _countryToCurrency.containsKey(primaryCountry)) {
+    if (primaryCountry != null &&
+        _countryToCurrency.containsKey(primaryCountry)) {
       return _countryToCurrency[primaryCountry]!;
     }
     if (indianLanguages.contains(primary.languageCode.toLowerCase())) {

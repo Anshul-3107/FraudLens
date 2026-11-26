@@ -18,10 +18,21 @@ import io.flutter.plugin.common.MethodChannel
 import android.location.Geocoder
 import android.location.Location
 import android.location.LocationManager
+import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyProperties
+import android.util.Base64
+import java.security.KeyStore
 import java.util.Locale
+import javax.crypto.Cipher
+import javax.crypto.KeyGenerator
+import javax.crypto.SecretKey
+import javax.crypto.spec.GCMParameterSpec
 
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.fraudlens.fraudlens/notification_listener"
+    private val SECURE_STORAGE_CHANNEL = "com.fraudlens.fraudlens/secure_storage"
+    private val SECURE_PREFS_NAME = "fraudlens_secure_prefs"
+    private val KEYSTORE_ALIAS = "fraudlens_token_key_v1"
     private val SMS_PERMISSION_REQUEST_CODE = 101
     private val LOCATION_PERMISSION_REQUEST_CODE = 102
     private var notificationReceiver: BroadcastReceiver? = null
@@ -29,6 +40,45 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        val secureChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, SECURE_STORAGE_CHANNEL)
+        secureChannel.setMethodCallHandler { call, result ->
+            try {
+                when (call.method) {
+                    "write" -> {
+                        val key = call.argument<String>("key")
+                        val value = call.argument<String>("value")
+                        if (key.isNullOrEmpty() || value == null) {
+                            result.error("INVALID_ARGS", "Key and value are required", null)
+                        } else {
+                            writeSecureValue(key, value)
+                            result.success(true)
+                        }
+                    }
+                    "read" -> {
+                        val key = call.argument<String>("key")
+                        if (key.isNullOrEmpty()) {
+                            result.error("INVALID_ARGS", "Key is required", null)
+                        } else {
+                            result.success(readSecureValue(key))
+                        }
+                    }
+                    "delete" -> {
+                        val key = call.argument<String>("key")
+                        if (key.isNullOrEmpty()) {
+                            result.error("INVALID_ARGS", "Key is required", null)
+                        } else {
+                            getSharedPreferences(SECURE_PREFS_NAME, Context.MODE_PRIVATE)
+                                .edit().remove(key).apply()
+                            result.success(true)
+                        }
+                    }
+                    else -> result.notImplemented()
+                }
+            } catch (e: Exception) {
+                result.error("SECURE_STORAGE_ERROR", e.message ?: "Encryption failure", null)
+            }
+        }
 
         val channel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
 
@@ -190,5 +240,55 @@ class MainActivity : FlutterActivity() {
             "city" to city,
             "address" to addressLine
         )
+    }
+
+    @Synchronized
+    private fun getOrCreateAesKey(): SecretKey {
+        val keyStore = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+        val existing = keyStore.getEntry(KEYSTORE_ALIAS, null) as? KeyStore.SecretKeyEntry
+        if (existing != null) {
+            return existing.secretKey
+        }
+        val generator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore")
+        val spec = KeyGenParameterSpec.Builder(
+            KEYSTORE_ALIAS,
+            KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
+        )
+            .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+            .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+            .setKeySize(256)
+            .build()
+        generator.init(spec)
+        return generator.generateKey()
+    }
+
+    private fun writeSecureValue(key: String, plainText: String) {
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        cipher.init(Cipher.ENCRYPT_MODE, getOrCreateAesKey())
+        val iv = cipher.iv
+        val cipherBytes = cipher.doFinal(plainText.toByteArray(Charsets.UTF_8))
+        val combined = ByteArray(iv.size + cipherBytes.size)
+        System.arraycopy(iv, 0, combined, 0, iv.size)
+        System.arraycopy(cipherBytes, 0, combined, iv.size, cipherBytes.size)
+        val encoded = Base64.encodeToString(combined, Base64.NO_WRAP)
+        getSharedPreferences(SECURE_PREFS_NAME, Context.MODE_PRIVATE)
+            .edit().putString(key, encoded).apply()
+    }
+
+    private fun readSecureValue(key: String): String? {
+        val prefs = getSharedPreferences(SECURE_PREFS_NAME, Context.MODE_PRIVATE)
+        val encoded = prefs.getString(key, null) ?: return null
+        return try {
+            val combined = Base64.decode(encoded, Base64.NO_WRAP)
+            if (combined.size <= 12) return null
+            val iv = combined.copyOfRange(0, 12)
+            val cipherBytes = combined.copyOfRange(12, combined.size)
+            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+            cipher.init(Cipher.DECRYPT_MODE, getOrCreateAesKey(), GCMParameterSpec(128, iv))
+            String(cipher.doFinal(cipherBytes), Charsets.UTF_8)
+        } catch (_: Exception) {
+            prefs.edit().remove(key).apply()
+            null
+        }
     }
 }

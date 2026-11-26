@@ -23,56 +23,58 @@ class EmptyStateView extends StatelessWidget {
     final colors = AppColors.of(context);
 
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(16),
+              width: 52,
+              height: 52,
               decoration: BoxDecoration(
                 color: colors.surfaceMuted,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: colors.border, width: 1),
+                shape: BoxShape.circle,
               ),
-              child: Icon(icon, size: 28, color: colors.textMuted),
+              child: Icon(icon, size: 24, color: colors.textMuted),
             ),
             const SizedBox(height: 14),
             Text(
               title,
               style: TextStyle(
                 color: colors.textPrimary,
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
+                fontSize: 15.5,
+                fontWeight: FontWeight.w600,
                 letterSpacing: -0.2,
               ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 6),
             ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 320),
+              constraints: const BoxConstraints(maxWidth: 300),
               child: Text(
                 message,
                 style: TextStyle(
                   color: colors.textSecondary,
-                  fontSize: 12,
-                  height: 1.4,
+                  fontSize: 13,
+                  height: 1.45,
                 ),
                 textAlign: TextAlign.center,
               ),
             ),
             if (actionLabel != null && onAction != null) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: 18),
               OutlinedButton(
                 onPressed: onAction,
                 style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(0, 40),
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
+                    horizontal: 18,
                     vertical: 8,
                   ),
                   textStyle: const TextStyle(
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
                 ),

@@ -19,10 +19,8 @@ elif DATABASE_URL or os.environ.get("DB_ENGINE", "").lower() == "postgres":
 else:
     FRAUDLENS_ENV = "development" if os.environ.get("DJANGO_DEBUG", "").lower() in ("1", "true", "yes") else "production"
 IS_PRODUCTION = (FRAUDLENS_ENV == "production")
-if IS_PRODUCTION:
-    DEBUG = False
-else:
-    DEBUG = os.environ.get("DJANGO_DEBUG", "1" if FRAUDLENS_ENV == "development" else "0").lower() in ("1", "true", "yes")
+raw_debug = os.environ.get("DJANGO_DEBUG", "1" if FRAUDLENS_ENV == "development" else "0")
+DEBUG = raw_debug.lower() in ("1", "true", "yes")
 
 # Secret Key Validation
 DEFAULT_INSECURE_SECRET = "dev-only-insecure-key-change-me"
@@ -46,10 +44,8 @@ if raw_csrf_origins:
 # CORS Configuration
 raw_cors_origins = os.environ.get("CORS_ALLOWED_ORIGINS", "")
 CORS_ALLOWED_ORIGINS = [o.strip() for o in raw_cors_origins.split(",") if o.strip()]
-if IS_PRODUCTION:
-    CORS_ALLOW_ALL_ORIGINS = False
-else:
-    CORS_ALLOW_ALL_ORIGINS = os.environ.get("CORS_ALLOW_ALL_ORIGINS", "0").lower() in ("1", "true", "yes")
+raw_cors_allow_all = os.environ.get("CORS_ALLOW_ALL_ORIGINS", "0")
+CORS_ALLOW_ALL_ORIGINS = raw_cors_allow_all.lower() in ("1", "true", "yes")
 
 
 def validate_security_settings(
@@ -234,8 +230,9 @@ REST_FRAMEWORK = {
         "user": os.environ.get("DJANGO_THROTTLE_USER", "300/minute"),
         "auth_register": os.environ.get("DJANGO_THROTTLE_AUTH_REGISTER", "10/minute"),
         "auth_login": os.environ.get("DJANGO_THROTTLE_AUTH_LOGIN", "20/minute"),
-        "auth_otp_send": os.environ.get("DJANGO_THROTTLE_AUTH_OTP_SEND", "5/minute"),
-        "auth_otp_verify": os.environ.get("DJANGO_THROTTLE_AUTH_OTP_VERIFY", "10/minute"),
+        "richie_chat": os.environ.get("DJANGO_THROTTLE_RICHIE_CHAT", "30/minute"),
+        "avatar_upload": os.environ.get("DJANGO_THROTTLE_AVATAR_UPLOAD", "20/minute"),
+        "account_link": os.environ.get("DJANGO_THROTTLE_ACCOUNT_LINK", "20/minute"),
     },
     "EXCEPTION_HANDLER": "transactions.exceptions.custom_exception_handler",
 }

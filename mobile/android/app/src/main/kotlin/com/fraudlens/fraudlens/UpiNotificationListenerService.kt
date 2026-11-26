@@ -35,8 +35,6 @@ class UpiNotificationListenerService : NotificationListenerService() {
         val bigText = extras.getCharSequence("android.bigText")?.toString() ?: ""
         val combinedText = if (bigText.isNotEmpty()) "$text $bigText" else text
 
-        Log.d(TAG, "Captured UPI notification from $pkg: Title='$title' | Text='$combinedText'")
-
         // Broadcast to MainActivity via local intent
         val intent = Intent(ACTION_UPI_NOTIFICATION).apply {
             putExtra(EXTRA_PACKAGE, pkg)

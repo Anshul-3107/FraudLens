@@ -10,7 +10,8 @@ class CurrencyProvider extends ChangeNotifier {
   static const String _kCurrencyCodeKey = 'fraudlens_currency_code';
   static const String _kRegionCodeKey = 'fraudlens_region_code';
   static const String _kExchangeRatesKey = 'fraudlens_exchange_rates';
-  static const String _kRatesLastUpdatedKey = 'fraudlens_exchange_rates_updated';
+  static const String _kRatesLastUpdatedKey =
+      'fraudlens_exchange_rates_updated';
 
   CurrencyMode _mode = CurrencyMode.auto;
   String _detectedCurrency = 'USD';
@@ -66,7 +67,7 @@ class CurrencyProvider extends ChangeNotifier {
   }
 
   /// Initialize and load saved currency & regional preferences.
-  Future<void> initialize() async {
+  Future<void> initialize({bool syncNetwork = true}) async {
     _detectedCurrency = CurrencyService.detectCurrencyFromLocale();
 
     try {
@@ -108,8 +109,10 @@ class CurrencyProvider extends ChangeNotifier {
     }
 
     // Attempt background live rate sync from backend and IP location verification
-    syncRatesFromBackend();
-    _verifyNetworkLocation();
+    if (syncNetwork) {
+      syncRatesFromBackend();
+      _verifyNetworkLocation();
+    }
   }
 
   void _verifyNetworkLocation() {
@@ -134,7 +137,10 @@ class CurrencyProvider extends ChangeNotifier {
       final freshRates = await CurrencyService.fetchRatesFromBackend();
       if (freshRates != null && freshRates.isNotEmpty) {
         _exchangeRates = freshRates;
-        _ratesLastUpdated = DateTime.now().toLocal().toString().substring(11, 16);
+        _ratesLastUpdated = DateTime.now().toLocal().toString().substring(
+          11,
+          16,
+        );
 
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString(_kExchangeRatesKey, jsonEncode(_exchangeRates));

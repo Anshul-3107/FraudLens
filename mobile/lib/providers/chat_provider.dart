@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../services/chat_service.dart';
 
 class ChatProvider extends ChangeNotifier {
@@ -6,8 +7,7 @@ class ChatProvider extends ChangeNotifier {
 
   final List<ChatMessage> _messages = [
     ChatMessage(
-      text:
-          "Hi! I'm Richie, your FraudLens personal security assistant. How can I help you keep your transactions safe today?",
+      text: "Hi! I'm Richie, your FraudLens personal security assistant. How can I help you keep your transactions safe today?",
       sender: 'richie',
       timestamp: DateTime.now(),
     ),
@@ -52,8 +52,7 @@ class ChatProvider extends ChangeNotifier {
       _error = e.toString();
       _messages.add(
         ChatMessage(
-          text:
-              "Sorry, I had trouble reaching the server. Please check your connection and try again.",
+          text: "Sorry, I had trouble reaching the server. Please check your connection and try again.",
           sender: 'richie',
           timestamp: DateTime.now(),
         ),
@@ -68,8 +67,7 @@ class ChatProvider extends ChangeNotifier {
     _messages.clear();
     _messages.add(
       ChatMessage(
-        text:
-            "Hi! I'm Richie, your FraudLens personal security assistant. How can I help you keep your transactions safe today?",
+        text: "Hi! I'm Richie, your FraudLens personal security assistant. How can I help you keep your transactions safe today?",
         sender: 'richie',
         timestamp: DateTime.now(),
       ),
