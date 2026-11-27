@@ -31,13 +31,13 @@ class EmptyStateView extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
-              width: 52,
-              height: 52,
+              width: 56,
+              height: 56,
               decoration: BoxDecoration(
-                color: colors.surfaceMuted,
+                color: colors.primaryBg,
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, size: 24, color: colors.textMuted),
+              child: Icon(icon, size: 25, color: colors.primarySoft),
             ),
             const SizedBox(height: 14),
             Text(
@@ -68,6 +68,13 @@ class EmptyStateView extends StatelessWidget {
               OutlinedButton(
                 onPressed: onAction,
                 style: OutlinedButton.styleFrom(
+                  foregroundColor: colors.isDark
+                      ? colors.primarySoft
+                      : colors.primary,
+                  side: BorderSide(
+                    color: colors.primary.withValues(alpha: 0.45),
+                  ),
+                  shape: const StadiumBorder(),
                   minimumSize: const Size(0, 40),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 18,

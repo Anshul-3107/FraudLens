@@ -28,12 +28,17 @@ class _RichieChatSheetState extends State<RichieChatSheet> {
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
-  final List<String> _quickPrompts = [
-    'Explain my latest alert',
-    'How do I report fraud?',
-    'Summarize my spending',
-    'Tips to keep my accounts safe',
+  final List<({String text, IconData icon})> _quickPrompts = const [
+    (text: 'Explain my latest alert', icon: Icons.gpp_maybe_outlined),
+    (text: 'How do I report fraud?', icon: Icons.flag_outlined),
+    (text: 'Summarize my spending', icon: Icons.insights_rounded),
+    (text: 'Tips to keep my accounts safe', icon: Icons.shield_outlined),
   ];
+
+  Color _promptColor(AppColors colors, int index) {
+    final palette = [colors.amber, colors.rose, colors.emerald, colors.cyan];
+    return palette[index % palette.length];
+  }
 
   @override
   void initState() {
@@ -221,9 +226,12 @@ class _RichieChatSheetState extends State<RichieChatSheet> {
                   itemCount: _quickPrompts.length,
                   separatorBuilder: (_, _) => const SizedBox(width: 8),
                   itemBuilder: (context, i) {
+                    final prompt = _quickPrompts[i];
+                    final chipColor = _promptColor(colors, i);
                     return ActionChip(
+                      avatar: Icon(prompt.icon, size: 15, color: chipColor),
                       label: Text(
-                        _quickPrompts[i],
+                        prompt.text,
                         style: TextStyle(
                           color: colors.textPrimary,
                           fontSize: 12,
@@ -235,7 +243,7 @@ class _RichieChatSheetState extends State<RichieChatSheet> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      onPressed: () => _sendMessage(_quickPrompts[i]),
+                      onPressed: () => _sendMessage(prompt.text),
                     );
                   },
                 ),
@@ -294,11 +302,9 @@ class _RichieChatSheetState extends State<RichieChatSheet> {
                       color: colors.tealPrimary,
                       shape: const CircleBorder(),
                       child: IconButton(
-                        icon: Icon(
+                        icon: const Icon(
                           Icons.arrow_upward_rounded,
-                          color: colors.isDark
-                              ? const Color(0xFF0F0F11)
-                              : Colors.white,
+                          color: Colors.white,
                           size: 20,
                         ),
                         tooltip: 'Send',
@@ -352,9 +358,7 @@ class _RichieChatSheetState extends State<RichieChatSheet> {
               child: SelectableText(
                 msg.text,
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: isUser
-                      ? (colors.isDark ? const Color(0xFF0F0F11) : Colors.white)
-                      : colors.textPrimary,
+                  color: isUser ? Colors.white : colors.textPrimary,
                   fontSize: 13.5,
                   height: 1.4,
                 ),

@@ -148,14 +148,14 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                   child: Column(
                     children: [
                       Container(
-                        width: 48,
-                        height: 48,
+                        width: 52,
+                        height: 52,
                         decoration: BoxDecoration(
                           color: txn.hasAlert
                               ? colors.riskCriticalBg
                               : (txn.isReceived
                                     ? colors.riskLowBg
-                                    : colors.surfaceMuted),
+                                    : colors.getCategoryBg(txn.category)),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
@@ -164,12 +164,12 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                               : (txn.isReceived
                                     ? Icons.south_west_rounded
                                     : colors.getCategoryIcon(txn.category)),
-                          size: 22,
+                          size: 24,
                           color: txn.hasAlert
                               ? colors.riskCritical
                               : (txn.isReceived
                                     ? colors.riskLow
-                                    : colors.textPrimary),
+                                    : colors.getCategoryColor(txn.category)),
                         ),
                       ),
                       const SizedBox(height: 14),
@@ -408,7 +408,32 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                       _buildDetailRow(
                         context,
                         'Category',
-                        AppColors.friendlyCategoryName(txn.category),
+                        '',
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: colors.getCategoryColor(txn.category),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                AppColors.friendlyCategoryName(txn.category),
+                                style: TextStyle(
+                                  color: colors.textPrimary,
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                       Divider(color: colors.borderSubtle, height: 1),
                       _buildDetailRow(
@@ -431,7 +456,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                 const SizedBox(height: 14),
 
                 // Ask Richie Contextual Action
-                OutlinedButton.icon(
+                FilledButton.icon(
                   onPressed: () {
                     RichieChatSheet.show(
                       context,
@@ -439,6 +464,14 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                           'Can you review my $displayAmount payment at ${txn.merchant}?',
                     );
                   },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: colors.primaryBg,
+                    foregroundColor: colors.isDark
+                        ? colors.primarySoft
+                        : colors.primary,
+                    elevation: 0,
+                    shape: const StadiumBorder(),
+                  ),
                   icon: const Icon(Icons.chat_bubble_outline_rounded, size: 17),
                   label: const Text('Ask Richie about this payment'),
                 ),

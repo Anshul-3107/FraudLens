@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../config/app_theme.dart';
 import '../../models/transaction.dart';
 import '../../providers/card_provider.dart';
+import '../../providers/currency_provider.dart';
 import '../../providers/transaction_provider.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/error_view.dart';
@@ -302,6 +303,7 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
     final txnProvider = context.watch<TransactionProvider>();
+    final currencyProvider = context.watch<CurrencyProvider>();
     final totalPages = (txnProvider.count / 50).ceil();
     final grouped = _groupByDate(txnProvider.transactions);
 
@@ -354,7 +356,11 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
                   textInputAction: TextInputAction.search,
                   decoration: InputDecoration(
                     hintText: 'Search merchant or store...',
-                    prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                    prefixIcon: Icon(
+                      Icons.search_rounded,
+                      size: 20,
+                      color: colors.textMuted,
+                    ),
                     suffixIcon: _searchController.text.isNotEmpty
                         ? IconButton(
                             icon: const Icon(Icons.close_rounded, size: 18),
@@ -364,8 +370,20 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
                             },
                           )
                         : null,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(26),
+                      borderSide: BorderSide(color: colors.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(26),
+                      borderSide: BorderSide(color: colors.border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(26),
+                      borderSide: BorderSide(color: colors.primary, width: 1.5),
+                    ),
                     contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 14,
+                      horizontal: 16,
                       vertical: 11,
                     ),
                   ),
@@ -378,6 +396,7 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
                       _FilterPill(
                         label: 'All',
                         selected: !txnProvider.hasActiveFilters,
+                        selectedColor: colors.primary,
                         onTap: () {
                           _searchController.clear();
                           txnProvider.resetFilters();
@@ -403,6 +422,7 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
                             txnProvider.dateFrom != null ||
                             txnProvider.dateTo != null ||
                             (txnProvider.minAmount ?? 0) > 0,
+                        selectedColor: colors.violet,
                         onTap: _showFilterModal,
                       ),
                     ],
@@ -491,23 +511,60 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
                           itemCount: grouped.length,
                           itemBuilder: (context, groupIndex) {
                             final group = grouped[groupIndex];
+                            final double daySpendDisplay = group.items
+                                .where((t) => !t.isReceived)
+                                .fold<double>(
+                                  0.0,
+                                  (sum, t) =>
+                                      sum +
+                                      (t.isSourceUsd
+                                          ? currencyProvider.convertFromUsd(
+                                              t.amount,
+                                            )
+                                          : t.amount),
+                                );
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 16),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Padding(
-                                    padding: const EdgeInsets.only(
-                                      left: 4,
-                                      bottom: 8,
+                                    padding: const EdgeInsets.fromLTRB(
+                                      4,
+                                      0,
+                                      4,
+                                      8,
                                     ),
-                                    child: Text(
-                                      group.header,
-                                      style: TextStyle(
-                                        color: colors.textSecondary,
-                                        fontSize: 12.5,
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            group.header,
+                                            style: TextStyle(
+                                              color: colors.textSecondary,
+                                              fontSize: 12.5,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        if (daySpendDisplay > 0)
+                                          Text(
+                                            currencyProvider.format(
+                                              daySpendDisplay,
+                                              isSourceUsd: false,
+                                            ),
+                                            style: TextStyle(
+                                              color: colors.textMuted,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              fontFeatures:
+                                                  AppTheme.tabularFigures,
+                                            ),
+                                            maxLines: 1,
+                                          ),
+                                      ],
                                     ),
                                   ),
                                   Container(

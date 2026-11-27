@@ -161,10 +161,16 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
           ),
           child: Row(
             children: [
-              Icon(
-                icon,
-                size: 20,
-                color: isSelected ? accentColor : colors.textSecondary,
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: accentColor.withValues(
+                    alpha: colors.isDark ? 0.16 : 0.12,
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, size: 18, color: accentColor),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -496,7 +502,7 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
                       const SizedBox(height: 8),
                       SizedBox(
                         width: double.infinity,
-                        child: OutlinedButton.icon(
+                        child: FilledButton.icon(
                           onPressed: () {
                             RichieChatSheet.show(
                               context,
@@ -504,6 +510,14 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
                                   'Explain why Alert #${alert.id} ($displayAmount at ${txn?.merchant ?? "merchant"}) was flagged.',
                             );
                           },
+                          style: FilledButton.styleFrom(
+                            backgroundColor: colors.primaryBg,
+                            foregroundColor: colors.isDark
+                                ? colors.primarySoft
+                                : colors.primary,
+                            elevation: 0,
+                            shape: const StadiumBorder(),
+                          ),
                           icon: const Icon(
                             Icons.chat_bubble_outline_rounded,
                             size: 16,

@@ -177,6 +177,7 @@ class _AppShellState extends State<AppShell> {
   }
 
   void _showNotificationPermissionBanner() {
+    final colors = AppColors.of(context);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         duration: const Duration(seconds: 7),
@@ -199,7 +200,7 @@ class _AppShellState extends State<AppShell> {
         ),
         action: SnackBarAction(
           label: 'Enable',
-          textColor: Colors.tealAccent,
+          textColor: colors.primarySoft,
           onPressed: () async {
             await NotificationListenerService.instance.requestPermission();
             await NotificationListenerService.instance.requestSmsPermission();

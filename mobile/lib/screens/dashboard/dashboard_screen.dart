@@ -189,60 +189,107 @@ class _DashboardScreenState extends State<DashboardScreen> {
     required AppColors colors,
     required String label,
     required String value,
-    required Color dotColor,
+    required IconData icon,
+    required Color accentColor,
+    required Color accentBg,
     VoidCallback? onTap,
     Color? valueColor,
   }) {
     return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  value,
+      child: Material(
+        color: colors.isDark
+            ? colors.surfaceMuted.withValues(alpha: 0.65)
+            : colors.surfaceMuted,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        color: accentBg,
+                        borderRadius: BorderRadius.circular(7),
+                      ),
+                      child: Icon(icon, size: 13.5, color: accentColor),
+                    ),
+                    const Spacer(),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        value,
+                        style: TextStyle(
+                          color: valueColor ?? colors.textPrimary,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          fontFeatures: AppTheme.tabularFigures,
+                        ),
+                        maxLines: 1,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  label,
                   style: TextStyle(
-                    color: valueColor ?? colors.textPrimary,
-                    fontSize: 16.5,
-                    fontWeight: FontWeight.w700,
-                    fontFeatures: AppTheme.tabularFigures,
+                    color: colors.textSecondary,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w500,
                   ),
                   maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-              const SizedBox(height: 3),
-              Row(
-                children: [
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: dotColor,
-                      shape: BoxShape.circle,
-                    ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCategoryProportionBar(
+    AppColors colors,
+    DashboardProvider dashProvider,
+  ) {
+    final cats = dashProvider.summary?.byCategory ?? [];
+    if (cats.isEmpty) return const SizedBox.shrink();
+
+    final top = cats.where((c) => c.total > 0).take(5).toList();
+    if (top.isEmpty) return const SizedBox.shrink();
+
+    final sumTop = top.fold<double>(0, (acc, c) => acc + c.total);
+    if (sumTop <= 0) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 14),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(4),
+        child: SizedBox(
+          height: 6,
+          child: Row(
+            children: [
+              for (int i = 0; i < top.length; i++) ...[
+                if (i > 0) const SizedBox(width: 2),
+                Expanded(
+                  flex: ((top[i].total / sumTop) * 1000).round().clamp(
+                    25,
+                    1000,
                   ),
-                  const SizedBox(width: 5),
-                  Expanded(
-                    child: Text(
-                      label,
-                      style: TextStyle(
-                        color: colors.textMuted,
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                  child: Container(
+                    color: colors.getCategoryColor(top[i].category),
                   ),
-                ],
-              ),
+                ),
+              ],
             ],
           ),
         ),
@@ -583,33 +630,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ],
+                              _buildCategoryProportionBar(colors, dashProvider),
                               const SizedBox(height: 14),
-                              Divider(color: colors.borderSubtle, height: 1),
-                              const SizedBox(height: 6),
                               Row(
                                 children: [
                                   _buildStatTile(
                                     colors: colors,
                                     label: 'Transactions',
                                     value: countFormat.format(txnCount),
-                                    dotColor: colors.cyan,
+                                    icon: Icons.swap_horiz_rounded,
+                                    accentColor: colors.cyan,
+                                    accentBg: colors.cyanBg,
                                     onTap: () => widget.onNavigateTab?.call(1),
                                   ),
+                                  const SizedBox(width: 8),
                                   _buildStatTile(
                                     colors: colors,
                                     label: 'In review',
                                     value: countFormat.format(inReviewAlerts),
-                                    dotColor: colors.amber,
+                                    icon: Icons.schedule_rounded,
+                                    accentColor: colors.amber,
+                                    accentBg: colors.amberBg,
                                     valueColor: inReviewAlerts > 0
                                         ? colors.amber
                                         : null,
                                     onTap: () => widget.onNavigateTab?.call(2),
                                   ),
+                                  const SizedBox(width: 8),
                                   _buildStatTile(
                                     colors: colors,
                                     label: 'Resolved',
                                     value: countFormat.format(resolvedAlerts),
-                                    dotColor: colors.emerald,
+                                    icon: Icons.check_rounded,
+                                    accentColor: colors.emerald,
+                                    accentBg: colors.riskLowBg,
                                     onTap: () => widget.onNavigateTab?.call(2),
                                   ),
                                 ],
@@ -633,6 +687,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             children: [
                               Row(
                                 children: [
+                                  Container(
+                                    width: 28,
+                                    height: 28,
+                                    decoration: BoxDecoration(
+                                      color: colors.primaryBg,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Icon(
+                                      Icons.show_chart_rounded,
+                                      size: 16,
+                                      color: colors.primarySoft,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
                                   Expanded(
                                     child: Text(
                                       'Spending over time',
@@ -646,12 +714,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     ),
                                   ),
                                   const SizedBox(width: 8),
-                                  Text(
-                                    currencyProvider.activeCurrency,
-                                    style: TextStyle(
-                                      color: colors.textMuted,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: colors.surfaceMuted,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      currencyProvider.activeCurrency,
+                                      style: TextStyle(
+                                        color: colors.textSecondary,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -682,6 +760,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
+                                  Container(
+                                    width: 28,
+                                    height: 28,
+                                    decoration: BoxDecoration(
+                                      color: colors.violetBg,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Icon(
+                                      Icons.donut_large_rounded,
+                                      size: 16,
+                                      color: colors.violet,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
                                   Expanded(
                                     child: Text(
                                       'Top categories',
@@ -728,6 +820,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         backgroundColor: colors.primary,
         foregroundColor: Colors.white,
         elevation: 3,
+        shape: const StadiumBorder(),
         icon: const Icon(Icons.auto_awesome_rounded, size: 19),
         label: const Text(
           'Ask Richie',

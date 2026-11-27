@@ -230,15 +230,18 @@ class _AlertsListScreenState extends State<AlertsListScreen> {
           decoration: BoxDecoration(
             color: selected ? colors.surface : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
+            border: selected ? Border.all(color: colors.borderSubtle) : null,
             boxShadow: selected ? colors.cardShadow : const [],
           ),
           alignment: Alignment.center,
           child: Text(
             label,
             style: TextStyle(
-              color: selected ? colors.textPrimary : colors.textMuted,
+              color: selected
+                  ? (colors.isDark ? colors.primarySoft : colors.primary)
+                  : colors.textMuted,
               fontSize: 13,
-              fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -332,6 +335,7 @@ class _AlertsListScreenState extends State<AlertsListScreen> {
                     _StatusFilterChip(
                       label: 'All',
                       isSelected: activeStatus == null || activeStatus.isEmpty,
+                      color: colors.primary,
                       onTap: () => alertProvider.setStatus(null),
                     ),
                     const SizedBox(width: 8),
@@ -505,8 +509,39 @@ class _AlertsListScreenState extends State<AlertsListScreen> {
                                         // Merchant & Amount
                                         Row(
                                           crossAxisAlignment:
-                                              CrossAxisAlignment.start,
+                                              CrossAxisAlignment.center,
                                           children: [
+                                            Container(
+                                              width: 38,
+                                              height: 38,
+                                              decoration: BoxDecoration(
+                                                color: alert.status == 'open'
+                                                    ? colors.riskCriticalBg
+                                                    : (alert.status ==
+                                                              'in_review'
+                                                          ? colors.amberBg
+                                                          : colors.riskLowBg),
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: Icon(
+                                                alert.status == 'open'
+                                                    ? Icons.gpp_maybe_outlined
+                                                    : (alert.status ==
+                                                              'in_review'
+                                                          ? Icons
+                                                                .schedule_rounded
+                                                          : Icons
+                                                                .verified_user_outlined),
+                                                size: 19,
+                                                color: alert.status == 'open'
+                                                    ? colors.riskCritical
+                                                    : (alert.status ==
+                                                              'in_review'
+                                                          ? colors.amber
+                                                          : colors.riskLow),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 11),
                                             Expanded(
                                               child: Column(
                                                 crossAxisAlignment:
@@ -573,18 +608,22 @@ class _AlertsListScreenState extends State<AlertsListScreen> {
                                           Container(
                                             width: double.infinity,
                                             padding: const EdgeInsets.symmetric(
-                                              horizontal: 10,
-                                              vertical: 7,
+                                              horizontal: 11,
+                                              vertical: 8,
                                             ),
                                             decoration: BoxDecoration(
-                                              color: colors.surfaceMuted,
+                                              color: alert.status == 'open'
+                                                  ? colors.riskCriticalBg
+                                                  : colors.surfaceMuted,
                                               borderRadius:
-                                                  BorderRadius.circular(8),
+                                                  BorderRadius.circular(10),
                                             ),
                                             child: Text(
                                               topReason.text,
                                               style: TextStyle(
-                                                color: colors.textSecondary,
+                                                color: alert.status == 'open'
+                                                    ? colors.textPrimary
+                                                    : colors.textSecondary,
                                                 fontSize: 12,
                                                 fontWeight: FontWeight.w500,
                                               ),
